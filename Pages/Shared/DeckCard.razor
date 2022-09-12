@@ -1,0 +1,35 @@
+﻿
+<span class="w-auto"
+      style="position:relative; top:0; left: 0;">
+    <Blazorise.Image Source="@Card.Info.ImageUrl"
+                     Style="position:relative; top:0; left:0; height:100px;"
+                     oncontextmenu="return false;" />
+    @{
+        uint limit = Card.GetCardLimit();
+        if (limit < 3)
+        {
+            string path = null;
+
+            @switch (limit)
+            {
+                case 0:
+                    path = "/images/assets/limit_forbidden.png";
+                    break;
+                case 1:
+                    path = "/images/assets/limit_limited.png";
+                    break;
+                case 2:
+                    path = "/images/assets/limit_semilimited.png";
+                    break;
+            }
+
+            <Blazorise.Image Source="@path" Style="position:absolute; top:-37px; left:0; height:35px;" />
+        }
+    }
+</span>
+
+@code
+{
+    [Parameter]
+    public Card Card { get; set; }
+}

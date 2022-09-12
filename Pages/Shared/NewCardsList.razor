@@ -1,0 +1,10 @@
+﻿
+<div class="container-fluid">
+    <h5>(Click For Info)</h5>
+    <div class="row justify-content-start">
+        @foreach (NewCardModel newCardModel in _sortedNewCards)
+        {
+            <NewCard CardModel="@newCardModel" />
+        }
+    </div>
+</div>

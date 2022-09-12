@@ -1,0 +1,189 @@
+﻿@page "/progressionseries/{progressionseriesid}/settings"
+
+@using Blazorise.Snackbar;
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentProgressionSeries == null)
+{
+    <h3>This Progression Series Does Not Exist</h3>
+}
+else if (!_currentProgressionSeries.HostId.Equals(CurrentUserId))
+{
+    <h3>You Are Not The Host Of This Progression Series</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentProgressionSeries" Duelist="_currentDuelist" />
+
+    <hr />
+    <p>
+        When a Duelist acquires more than three copies of a card, the excess are converted into Star Chips. Higher rarity cards provide more Star Chips.
+        <br />
+        The amount of Star Chips it takes to buy a single Booster Pack or Structure Deck is determined by the Host of the Progression Series.
+        <br />
+        A Duelist cannot buy a Booster Pack or Structure Deck that was released more recently that the current Set of that Progression Series.
+    </p>
+
+    <EditForm Model="_progressionSeriesSettingsModel" OnValidSubmit="OnSaveChanges">
+        <div class="form-group">
+            <Blazorise.Switch TValue="bool" @bind-Checked="_progressionSeriesSettingsModel.AllowPurchaseBoosterPacks">
+                Allow duelists to spend Star Chips to purchase Booster Packs
+            </Blazorise.Switch>
+        </div>
+        <div class="form-group">
+            <div class="row no-gutters">
+                <div class="col-auto">
+                    <label>Booster Pack Price: </label>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.NumericEdit TValue="int" @bind-Value="_progressionSeriesSettingsModel.BoosterPackPrice"
+                                           Min="1" Decimals="0" Style="width:60px; height:25px;" EnableStep="false" />
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <Blazorise.Switch TValue="bool" @bind-Checked="_progressionSeriesSettingsModel.AllowPurchaseStructureDecks">
+                Allow duelists to spend Star Chips to purchase Structure Decks
+            </Blazorise.Switch>
+        </div>
+        <div class="form-group">
+            <div class="row no-gutters">
+                <div class="col-auto">
+                    <label>Structure Deck Price: </label>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.NumericEdit TValue="int" @bind-Value="_progressionSeriesSettingsModel.StructureDeckPrice"
+                                           Min="1" Decimals="0" Style="width:60px; height:25px;" EnableStep="false" />
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </div>
+            </div>
+        </div>
+
+        <div class="form-group">
+            <Blazorise.Switch TValue="bool" @bind-Checked="_progressionSeriesSettingsModel.AllowPurchaseSpecialProducts">
+                <p>
+                    Allow duelists to spend Star Chips to purchase Special Products. These are products that are weird, and are neither structure/starter decks nor full Booster Packs.
+                    <br>
+                    For example, the cards that come as promos in a "Special Edition" fit into this category, as well as most other promo cards.
+                    <br>
+                    With these products, the buyer will receive one copy of every card in this product, just like structure/starter decks.
+                    <br>
+                    However, rather than a flat price for these products, there will be a price per each card in the product.
+                </p>
+            </Blazorise.Switch>
+        </div>
+        <div class="form-group">
+            <div class="row no-gutters">
+                <div class="col-auto">
+                    <label>Special Product Price Per Card: </label>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.NumericEdit TValue="int" @bind-Value="_progressionSeriesSettingsModel.SpecialProductPricePerCard"
+                                           Min="1" Decimals="0" Style="width:60px; height:25px;" EnableStep="false" />
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </div>
+            </div>
+        </div>
+
+        <hr />
+        <p>
+            Setting BanList Format to None means all cards have a limit of 3 copies in deck.
+            <br />
+            Setting BanList Format to Traditional follows the Advanced banlist, except that cards that would be Forbidden are instead Limited.
+            <br />
+            Setting BanList Format to Advanced follows the same banlist used for tournament play.
+            <br />
+            You can choose to follow the banlist of any previous date in the past.
+            <br />
+            If you set the AutoSetCurrentBanList option, then it will use correct banlsit for whatever is the latest BoosterPack that you have distributed to any Duelist.
+        </p>
+
+        <div class="form-group">
+            <label>BanList Format: </label>
+            <Blazorise.RadioGroup TValue="BanListFormat" Name="BanListFormat" Buttons="true" @bind-CheckedValue="_progressionSeriesSettingsModel.BanListFormat">
+                <Blazorise.Radio TValue="BanListFormat" Value="BanListFormat.None">@BanListFormat.None.GetDisplayName()</Blazorise.Radio>
+                <Blazorise.Radio TValue="BanListFormat" Value="BanListFormat.Traditional">@BanListFormat.Traditional.GetDisplayName()</Blazorise.Radio>
+                <Blazorise.Radio TValue="BanListFormat" Value="BanListFormat.Advanced">@BanListFormat.Advanced.GetDisplayName()</Blazorise.Radio>
+            </Blazorise.RadioGroup>
+        </div>
+
+        <div class="form-group">
+            <Blazorise.Switch TValue="bool" Checked="_progressionSeriesSettingsModel.AutoSetCurrentBanList" CheckedChanged="OnAutoSetBanListChanged">
+                Auto-Set Current BanList
+            </Blazorise.Switch>
+            <br />
+            <label>BanList: </label>
+            <SelectList TItem="BanList" TValue="Guid?" Data="_banLists" TextField="@(item => item?.ReleaseDate.ToShortDateString() ?? "None")"
+                        ValueField="@(item => item?.BanListId)" SelectedValue="_progressionSeriesSettingsModel.CurrentBanListId" Class="w-auto"
+                        SelectedValueChanged="SelectedBanListChanged" disabled="@_progressionSeriesSettingsModel.AutoSetCurrentBanList" />
+        </div>
+
+        <hr />
+        <p>
+            Choose whether you want new tournaments to be Single-Elimination or Swiss Round.
+            <br />
+            Choose who gets the BYE when there are an odd number of duelists.
+        </p>
+
+        <div class="form-group">
+            <label>Tournament Structure: </label>
+            <Blazorise.RadioGroup TValue="TournamentStructure" Name="TournamentStyle" Buttons="true" @bind-CheckedValue="_progressionSeriesSettingsModel.TournamentStructure">
+                <Blazorise.Radio TValue="TournamentStructure" Value="TournamentStructure.SingleElimination">@TournamentStructure.SingleElimination.GetDisplayName()</Blazorise.Radio>
+                <Blazorise.Radio TValue="TournamentStructure" Value="TournamentStructure.SwissRound">@TournamentStructure.SwissRound.GetDisplayName()</Blazorise.Radio>
+            </Blazorise.RadioGroup>
+        </div>
+
+        <div class="form-group">
+            <label>Tournament BYE: </label>
+            <Blazorise.RadioGroup TValue="TournamentBye" Name="TournamentBye" Buttons="true" @bind-CheckedValue="_progressionSeriesSettingsModel.TournamentBye">
+                <Blazorise.Radio TValue="TournamentBye" Value="TournamentBye.Random">@TournamentBye.Random.GetDisplayName()</Blazorise.Radio>
+                <Blazorise.Radio TValue="TournamentBye" Value="TournamentBye.TopScore">@TournamentBye.TopScore.GetDisplayName()</Blazorise.Radio>
+                <Blazorise.Radio TValue="TournamentBye" Value="TournamentBye.BottomScore">@TournamentBye.BottomScore.GetDisplayName()</Blazorise.Radio>
+            </Blazorise.RadioGroup>
+        </div>
+
+        <hr />
+        @* User Controls *@
+        <div class="row justify-content-end">
+            <div class="col-auto align-self-end">
+                <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="OnCancelChanges">
+                    <span class="oi oi-x" aria-hidden="true" />
+                    Cancel Changes
+                </Blazorise.Button>
+            </div>
+            <div class="col-auto align-self-end">
+                <Blazorise.Button Color="Blazorise.Color.Success" Type="Blazorise.ButtonType.Submit">
+                    <Blazorise.Icon Name="Blazorise.IconName.Save" />
+                    Save Changes
+                </Blazorise.Button>
+            </div>
+        </div>
+        <Snackbar @ref="_saveConfirmationSnackbar" Color="SnackbarColor.Success" Interval="2000" Location="SnackbarLocation.Right">
+            <SnackbarBody><strong>Saved Successfully</strong></SnackbarBody>
+        </Snackbar>
+    </EditForm>
+
+    <hr />
+
+}

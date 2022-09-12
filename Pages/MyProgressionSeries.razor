@@ -1,0 +1,104 @@
+﻿@page "/MyProgressionSeries"
+
+@inherits AuthorizedComponentBase;
+
+<Blazorise.CardHeader Class="bg-secondary">
+    <h3>My Progression Series</h3>
+</Blazorise.CardHeader>
+@if (IsLoading)
+{
+    <Blazorise.CardBody>
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    </Blazorise.CardBody>
+}
+else
+{
+    <DataGrid Data="_myProgressionSeries" TItem="ProgressionSeries" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              RowSelectable="@((item) => false)" Striped="true" Bordered="true" Responsive="true"
+              ShowPager="@(_myProgressionSeries.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+              ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+              Filterable="@(_myProgressionSeries.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains">
+        <DataGridColumns>
+            <DataGridColumn TItem="ProgressionSeries" Field="Name" Caption="Name" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ ProgressionSeries series = context as ProgressionSeries; }
+                    <NavLink href=@{$"/progressionseries/{series.ProgressionSeriesId}"}>@series.Name</NavLink>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="ProgressionSeries" Field="Host.UserName" Caption="Host" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ ProgressionSeries series = context as ProgressionSeries; }
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                        <Blazorise.FigureImage Source="@series.Host.AvatarUrl" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                    <label>@series.Host.UserName</label>
+                    @if (series.HostId.Equals(CurrentUserId))
+                    {
+                        <Blazorise.Badge Class="bg-info">You</Blazorise.Badge>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridDateColumn TItem="ProgressionSeries" Field="DateStarted" Caption="Date Started" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ ProgressionSeries series = context as ProgressionSeries; }
+                    <span>@series.DateStarted.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridNumericColumn TItem="ProgressionSeries" Field="Duelists.Count" Caption="Participants" HeaderCellClass="bg-primary" />
+            @if (_myProgressionSeries.Any(series => series.HostId.Equals(CurrentUserId)))
+            {
+                <DataGridColumn TItem="ProgressionSeries" Field="ProgressionSeriesId" ShowCaption="false" HeaderCellClass="bg-primary" Sortable="false">
+                    <DisplayTemplate>
+                        @{ ProgressionSeries series = context as ProgressionSeries; }
+                        @if (series.HostId.Equals(CurrentUserId))
+                        {
+                            <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="@( () => OnDeleteThisSeries(series) )">
+                                <span class="oi oi-trash" aria-hidden="true" />
+                                Delete Series
+                            </Blazorise.Button>
+                        }
+                    </DisplayTemplate>
+                </DataGridColumn>
+            }
+        </DataGridColumns>
+    </DataGrid>
+
+    <Blazorise.CardFooter>
+        <EditForm Model="@_newSeriesModel" OnValidSubmit="OnAddNewProgressionSeriesAsync">
+            <DataAnnotationsValidator />
+            <div class="row">
+                <div class="col">
+                    <label>Progression Series Name: </label>
+                    <InputText @bind-Value="_newSeriesModel.Name" />
+                </div>
+                <div class="col">
+                    <Blazorise.Switch TValue="bool" @bind-Checked="_newSeriesModel.HostIsParticipating">I am participating</Blazorise.Switch>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Button Color="Blazorise.Color.Success" Type="Blazorise.ButtonType.Submit">
+                        <span class="oi oi-plus" aria-hidden="true" />
+                        Start New Series
+                    </Blazorise.Button>
+                </div>
+            </div>
+            <ValidationMessage For="() => _newSeriesModel.Name" />
+            <p class="text-danger">@_addNewSeriesErrorMessage</p>
+        </EditForm>
+    </Blazorise.CardFooter>
+
+    // This is a modal dialog for the user to confirm that they want to delete a series
+    <Blazorise.Modal @ref="_confirmDeleteSeriesDialog">
+        <Blazorise.ModalContent Centered="true">
+            <Blazorise.ModalBody>
+                <h5>Are you sure you want to delete "<strong>@_seriesToDelete?.Name</strong>"?</h5>
+            </Blazorise.ModalBody>
+            <Blazorise.ModalFooter>
+                <Blazorise.Button Color="Blazorise.Color.Primary" @onclick="@( () => CloseConfirmDeleteSeriesDialogAsync(false) )">Cancel</Blazorise.Button>
+                <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="@( () => CloseConfirmDeleteSeriesDialogAsync(true) )">Delete</Blazorise.Button>
+            </Blazorise.ModalFooter>
+        </Blazorise.ModalContent>
+    </Blazorise.Modal>
+}

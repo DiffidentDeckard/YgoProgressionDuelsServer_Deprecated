@@ -1,0 +1,59 @@
+﻿@page "/Account/Register"
+
+@using YgoProgressionDuels.Pages.Shared;
+
+<h3>Create a New Account</h3>
+<hr />
+
+<div class="row">
+    <div class="col-md-4">
+        <EditForm Model="_registerUserModel" OnValidSubmit="OnRegisterUserAsync">
+            <DataAnnotationsValidator />
+            <div class="text-danger">
+                @foreach (string userCreationError in _userCreationErrors)
+                {
+                    <p>@userCreationError</p>
+                }
+            </div>
+            <div class="form-group">
+                <DisplayName For="() => _registerUserModel.Email">
+                    <InputText @bind-Value="_registerUserModel.Email" />
+                </DisplayName>
+                <ValidationMessage For="() => _registerUserModel.Email" />
+            </div>
+            <div class="form-group">
+                <DisplayName For="() => _registerUserModel.UserName">
+                    <InputText @bind-Value="_registerUserModel.UserName" />
+                </DisplayName>
+                <ValidationMessage For="() => _registerUserModel.UserName" />
+            </div>
+            <div class="form-group">
+                <DisplayName For="() => _registerUserModel.Password">
+                    <InputText type="password" @bind-Value="_registerUserModel.Password" />
+                </DisplayName>
+                <ValidationMessage For="() => _registerUserModel.Password" />
+            </div>
+            <div class="form-group">
+                <DisplayName For="() => _registerUserModel.ConfirmPassword">
+                    <InputText type="password" @bind-Value="_registerUserModel.ConfirmPassword" />
+                </DisplayName>
+                <ValidationMessage For="() => _registerUserModel.ConfirmPassword" />
+            </div>
+            <div class="form-group">
+                <DisplayName For="() => _registerUserModel.AvatarUrl">
+                    <img src="@_registerUserModel.AvatarUrl" height="100" />
+                </DisplayName>
+                <ValidationMessage For="() => _registerUserModel.AvatarUrl" />
+            </div>
+            <button type="submit" class="btn btn-primary">Register</button>
+        </EditForm>
+    </div>
+    <div class="col-md-6 col-md-offset-2">
+        <section>
+            <div>
+                <p>TODO: Replace this with an image I have rights to</p>
+                <img src="https://i.pinimg.com/originals/3a/3d/4e/3a3d4ef7516081f8572097f1cf8a2106.jpg" width="500" />
+            </div>
+        </section>
+    </div>
+</div>

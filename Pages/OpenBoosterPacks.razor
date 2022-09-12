@@ -1,0 +1,122 @@
+﻿@page "/openboosterpacks/{duelistid}/{boosterpackinfoid}"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentDuelist == null)
+{
+    <h3>Either this progression series does not exist, or you are not participating in it.</h3>
+}
+else if (!_currentDuelist.OwnerId.Equals(CurrentUserId))
+{
+    <h3>You Are Not @_currentDuelist.Owner.UserName</h3>
+}
+else if (_currentBoosterPack == null)
+{
+    <h3>Booster pack does not exist</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentDuelist.Series" Duelist="_currentDuelist" />
+
+    <DataGrid Data=@(new List<BoosterPack>() {_currentBoosterPack}) TItem="BoosterPack" Sortable="false"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              Narrow="true" RowSelectable="@((item) => false)" Bordered="true" Responsive="true">
+        <DataGridColumns>
+            <DataGridColumn TItem="BoosterPack" Field="PackInfo.BoosterPackInfoId" Caption="(Click For Info)" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = (context as BoosterPack).PackInfo; }
+                    <div class="row justify-content-center" @onclick=@(() => OnOpenUrlInNewTabAsync(packInfo.SetInfoUrl))>
+                        <div class="col-auto">
+                            <div style="background-image:url(@packInfo.ImageUrl); height:130px; width:100px; background-position:center; background-size:cover;" />
+                        </div>
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="BoosterPack" Field="PackInfo.SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BoosterPack" Field="PackInfo.SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="BoosterPack" Field="PackInfo.ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = (context as BoosterPack).PackInfo; }
+                    <span>@packInfo.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridNumericColumn TItem="BoosterPack" Field="NumAvailable" Caption="Packs Available" HeaderCellClass="bg-primary" />
+            <DataGridNumericColumn TItem="BoosterPack" Field="NumOpened" Caption="Packs Opened" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BoosterPack" Field="BoosterPackId" Caption="Open Packs" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @if (_isWorking)
+                    {
+                        <Blazorise.Button Color="Blazorise.Color.Dark" Loading="true" Disabled="true">Loading...</Blazorise.Button>
+                    }
+                    else
+                    {
+                        bool isDisabled = _currentBoosterPack.NumAvailable <= 0;
+                        string unit = _currentBoosterPack.PackInfo.IsStructureDeck ? "Box" : "Pack";
+                        string units = _currentBoosterPack.PackInfo.IsStructureDeck ? "Boxes" : "Packs";
+                        Blazorise.Color btnType = isDisabled ? Blazorise.Color.Dark : Blazorise.Color.Success;
+                        <Blazorise.Button Color="@btnType" @onclick="() => OnOpenBoosterPacksAsync(1)" Disabled="@isDisabled">Open 1 @unit</Blazorise.Button>
+                        <br />
+
+                        bool primary = false;
+                        @if (_currentBoosterPack.NumAvailable > 10)
+                        {
+                            <Blazorise.Button Color="primary ? Blazorise.Color.Success : Blazorise.Color.Primary"
+                                              @onclick="() => OnOpenBoosterPacksAsync(10)">Open 10 @units</Blazorise.Button>
+                                            primary = !primary;
+                                            <br />
+                                        }
+
+                        @if (_currentBoosterPack.NumAvailable > 24)
+                        {
+                            <Blazorise.Button Color="primary ? Blazorise.Color.Success : Blazorise.Color.Primary"
+                                              @onclick="() => OnOpenBoosterPacksAsync(24)">Open 24 @units</Blazorise.Button>
+                                            primary = !primary;
+                                            <br />
+                                        }
+
+                        @if (_currentBoosterPack.NumAvailable > 1)
+                        {
+                            <Blazorise.Button Color="primary ? Blazorise.Color.Success : Blazorise.Color.Primary"
+                                              @onclick="() => OnOpenBoosterPacksAsync(_currentBoosterPack.NumAvailable)">Open All @units</Blazorise.Button>
+                                        }
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+    </DataGrid>
+    <p class="text-info">@_openBoosterPackMessage</p>
+    <p class="text-danger">@_openBoosterPackErrorMessage</p>
+    <hr />
+
+    @if (_isWorking)
+    {
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    }
+    else if (_newlyPulledCards?.Any() == true)
+    {
+        <h4>Number of Unique Cards Pulled: @_newlyPulledCards.Count</h4>
+
+        <strong>
+            Star Chips Gained: @_newStarChips
+            <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+            </Blazorise.Figure>
+        </strong>
+
+        <p>
+            You can never use more than 3 copies of a card in a deck, so excess cards are automatically converted into Star Chips.
+            <br />
+            These Star Chips can be used to purchase more packs, *IF* the host of this Progression Series allows it.
+        </p>
+
+        <NewCardsList NewCards="@_newlyPulledCards" />
+    }
+}

@@ -1,0 +1,102 @@
+﻿@inherits AuthorizedComponentBase;
+
+<Blazorise.Bar Breakpoint="Blazorise.Breakpoint.Desktop" Background="Blazorise.Background.Transparent">
+    <Blazorise.BarToggler Class="bg-primary" />
+    <Blazorise.BarMenu>
+        <Blazorise.BarStart>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To=@($"/progressionseries/{ProgressionSeries.ProgressionSeriesId}")>
+                    <Blazorise.Button Color="Blazorise.Color.Dark">
+                        <Blazorise.Icon Name="Blazorise.IconName.Home" />
+                        @ProgressionSeries.Name
+                    </Blazorise.Button>
+                </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            @if (Duelist != null)
+            {
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/openboosterpacks/{Duelist.DuelistId}")>
+                        <Blazorise.Button Color="Blazorise.Color.Primary">
+                            <i class="fas fa-box-open" />
+                            Open Packs
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/managedeck/{Duelist.DuelistId}")>
+                        <Blazorise.Button Color="Blazorise.Color.Primary">
+                            <span class="oi oi-box" aria-hidden="true" />
+                            Manage Deck
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+            }
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To=@($"/progressionseries/{ProgressionSeries.ProgressionSeriesId}/tournament")>
+                    <Blazorise.Button Color="Blazorise.Color.Primary">
+                        <i class="fas fa-network-wired" />
+                        Tournament
+                    </Blazorise.Button>
+                </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            @if (Duelist != null && (ProgressionSeries.AllowPurchaseBoosterPacks || ProgressionSeries.AllowPurchaseStructureDecks))
+            {
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/buyboosterpacks/{Duelist.DuelistId}")>
+                        <Blazorise.Button Color="Blazorise.Color.Secondary">
+                            <Blazorise.Icon Name="Blazorise.IconName.Store" />
+                            Buy Packs
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+            }
+            @if (Duelist != null && ProgressionSeries.AllowPurchaseSpecialProducts)
+            {
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/buyspecialproducts/{Duelist.DuelistId}")>
+                        <Blazorise.Button Color="Blazorise.Color.Secondary">
+                            <Blazorise.Icon Name="Blazorise.IconName.Star" />
+                            Special Product
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+            }
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To=@($"/progressionseries/{ProgressionSeries.ProgressionSeriesId}/banlist")>
+                    <Blazorise.Button Color="Blazorise.Color.Info">
+                        <Blazorise.Icon Name="Blazorise.IconName.Ban" />
+                        BanList
+                    </Blazorise.Button>
+                </Blazorise.BarLink>
+            </Blazorise.BarItem>
+        </Blazorise.BarStart>
+        @if (ProgressionSeries.HostId.Equals(CurrentUserId))
+        {
+            <Blazorise.BarEnd>
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/progressionseries/{ProgressionSeries.ProgressionSeriesId}/distributeboosterpacks")>
+                        <Blazorise.Button Color="Blazorise.Color.Success">
+                            <Blazorise.Icon Name="Blazorise.IconName.Gift" />
+                            Distribute Packs
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+                <Blazorise.BarItem>
+                    <Blazorise.BarLink To=@($"/progressionseries/{ProgressionSeries.ProgressionSeriesId}/settings")>
+                        <Blazorise.Button Color="Blazorise.Color.Dark">
+                            <span class="oi oi-cog" aria-hidden="true" />
+                            Settings
+                        </Blazorise.Button>
+                    </Blazorise.BarLink>
+                </Blazorise.BarItem>
+            </Blazorise.BarEnd>
+        }
+    </Blazorise.BarMenu>
+</Blazorise.Bar>
+@code {
+    [Parameter]
+    public ProgressionSeries ProgressionSeries { get; set; }
+
+    [Parameter]
+    public Duelist Duelist { get; set; }
+}

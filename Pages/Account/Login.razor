@@ -1,0 +1,57 @@
+﻿@page "/Account/Login"
+
+@using YgoProgressionDuels.Pages.Shared;
+
+<h3>Login</h3>
+<hr />
+
+<div class="row">
+    <div class="col-md-4">
+        <section>
+            <EditForm Model="_loginUserModel" OnValidSubmit="OnLoginUserAsync">
+                <DataAnnotationsValidator />
+                @if (!string.IsNullOrWhiteSpace(_userLoginError))
+                {
+                    <div class="text-danger">
+                        <p>@_userLoginError</p>
+                    </div>
+                }
+                <div class="form-group">
+                    <DisplayName For="() => _loginUserModel.UserName">
+                        <InputText @bind-Value="_loginUserModel.UserName" />
+                    </DisplayName>
+                    <ValidationMessage For="() => _loginUserModel.UserName" />
+                </div>
+                <div class="form-group">
+                    <DisplayName For="() => _loginUserModel.Password">
+                        <InputText type="password" @bind-Value="_loginUserModel.Password" />
+                    </DisplayName>
+                    <ValidationMessage For="() => _loginUserModel.Password" />
+                </div>
+                <div class="form-group">
+                    <div class="checkbox">
+                        <InputCheckbox @bind-Value="_loginUserModel.RememberMe" />
+                        <DisplayName For="() => _loginUserModel.RememberMe" />
+                    </div>
+                </div>
+                <div class="form-group">
+                    <button type="submit" class="btn btn-primary">Log in</button>
+                </div>
+                <div class="form-group">
+                    <p>
+                        <NavLink href="Account/ForgotPassword">Forgot your password?</NavLink>
+                    </p>
+                    <p>
+                        <NavLink href="Account/ResendEmailConfirmation">Resend email confirmation</NavLink>
+                    </p>
+                </div>
+            </EditForm>
+        </section>
+    </div>
+    <div class="col-md-6 col-md-offset-2">
+        <section>
+            <p>TODO: Replace this with an image I have rights to</p>
+            <img src="https://i.pinimg.com/originals/3a/3d/4e/3a3d4ef7516081f8572097f1cf8a2106.jpg" width="500" />
+        </section>
+    </div>
+</div>

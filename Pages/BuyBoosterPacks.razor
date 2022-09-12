@@ -1,0 +1,107 @@
+﻿@page "/buyboosterpacks/{duelistid}"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentDuelist == null)
+{
+    <h3>This Duelist Does Not Exist</h3>
+}
+else if (!_currentDuelist.OwnerId.Equals(CurrentUserId))
+{
+    <h3>You Are Not @_currentDuelist.Owner.UserName</h3>
+}
+else if (!_currentDuelist.Series.AllowPurchaseBoosterPacks && !_currentDuelist.Series.AllowPurchaseStructureDecks)
+{
+    <h3>The Host of this Progression Series is not currently allowing Participants to purchase Booster Packs or Structure Decks</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentDuelist.Series" Duelist="_currentDuelist" />
+
+    <p>
+        When you acquire more than three copies of a card, the excess are converted into Star Chips. Higher rarity cards provide more Star Chips.
+        <br />
+        The amount of Star Chips it takes to buy a single Booster Pack or Structure Deck is determined by the Host of the Progression Series.
+        <br />
+        A Duelist cannot buy a Booster Pack or Structure Deck that was released more recently that the current Set of that Progression Series.
+    </p>
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h3>
+            Star Chips: @_currentDuelist.NumStarChips
+            <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+            </Blazorise.Figure>
+        </h3>
+        @{
+            string canBuy = "nothing";
+            if (_currentDuelist.Series.AllowPurchaseBoosterPacks && _currentDuelist.Series.AllowPurchaseStructureDecks)
+            {
+                canBuy = "Booster Packs and Structure Decks";
+            }
+            else if (_currentDuelist.Series.AllowPurchaseBoosterPacks)
+            {
+                canBuy = "Booster Packs only";
+            }
+            else if (_currentDuelist.Series.AllowPurchaseStructureDecks)
+            {
+                canBuy = "Structure Decks only";
+            }
+        }
+        <h5>
+            You can buy @canBuy.
+        </h5>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="_availableBoosterPacks" TItem="BuyBoosterPackModel" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              RowSelectable="@((item) => false)" Striped="true" Bordered="true" Responsive="true"
+              ShowPager="@(_availableBoosterPacks.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+              ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+              Filterable="@(_availableBoosterPacks.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains">
+        <DataGridColumns>
+            <DataGridColumn TItem="BuyBoosterPackModel" Field="PackInfo.BoosterPackInfoId" Caption="(Click For Info)" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = (context as BuyBoosterPackModel).PackInfo; }
+                    <div class="row justify-content-center" @onclick=@(() => OnOpenUrlInNewTabAsync(packInfo.SetInfoUrl))>
+                        <div class="col-auto">
+                            <div style="background-image:url(@packInfo.ImageUrl); height:130px; width:100px; background-position:center; background-size:cover;" />
+                        </div>
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="BuyBoosterPackModel" Field="PackInfo.SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BuyBoosterPackModel" Field="PackInfo.SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="BuyBoosterPackModel" Field="PackInfo.ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary" Direction="Blazorise.SortDirection.Descending">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = (context as BuyBoosterPackModel).PackInfo; }
+                    <span>@packInfo.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridNumericColumn TItem="BuyBoosterPackModel" Field="NumAvailable" Caption="Packs Available" HeaderCellClass="bg-primary" />
+            <DataGridNumericColumn TItem="BuyBoosterPackModel" Field="NumOpened" Caption="Packs Opened" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BuyBoosterPackModel" Field="Pack" Caption="Buy Packs" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        BuyBoosterPackModel packModel = context as BuyBoosterPackModel;
+                        uint price = packModel.PackInfo.IsStructureDeck ? _currentDuelist.Series.StructureDeckPrice : _currentDuelist.Series.BoosterPackPrice;
+                        bool isDisabled = _currentDuelist.NumStarChips < price || _isProcessingPurchase;
+                        Blazorise.Color btnType = isDisabled ? Blazorise.Color.Dark : Blazorise.Color.Success;
+                    }
+                    <Blazorise.Button Color="@btnType" Disabled="@isDisabled" Loading="@_isProcessingPurchase" @onclick="() => OnPurchaseBoosterPackAsync(packModel)">
+                        @price
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+    </DataGrid>
+}

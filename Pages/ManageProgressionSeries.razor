@@ -1,0 +1,193 @@
+﻿@page "/progressionseries/{progressionseriesid}"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentProgressionSeries == null)
+{
+    <h3>This Progression Series Does Not Exist</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentProgressionSeries" Duelist="_currentDuelist" />
+
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col">
+                <h5>Date Started: @_currentProgressionSeries.DateStarted.ToShortDateString()</h5>
+            </div>
+            <div class="col">
+                <h5>BanList Format: @_currentProgressionSeries.BanListFormat.GetDisplayName()</h5>
+            </div>
+        </div>
+        <div class="row">
+            @if (_currentProgressionSeries.AllowPurchaseBoosterPacks)
+            {
+                <div class="col">
+                    <h5>
+                        Booster Pack Price: @_currentProgressionSeries.BoosterPackPrice
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </h5>
+                </div>
+            }
+            @if (_currentProgressionSeries.AllowPurchaseStructureDecks)
+            {
+                <div class="col">
+                    <h5>
+                        Structure Deck Price: @_currentProgressionSeries.StructureDeckPrice
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </h5>
+                </div>
+            }
+        </div>
+        @if (_currentProgressionSeries.CurrentBoosterPack != null)
+        {
+            <div class="row">
+                <div class="col">
+                    <h5>Current BoosterPack: (@_currentProgressionSeries.CurrentBoosterPack.SetCode) @_currentProgressionSeries.CurrentBoosterPack.SetName</h5>
+                </div>
+            </div>
+        }
+    </div>
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h3>Participating Duelists: @_currentProgressionSeries.Duelists.Count</h3>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="@_currentProgressionSeries.Duelists" TItem="Duelist" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              RowSelectable="@((item) => false)" Striped="true" Bordered="true" Responsive="true"
+              ShowPager="@(_currentProgressionSeries.Duelists.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+              ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+              Filterable="@(_currentProgressionSeries.Duelists.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains"
+              DetailRowTrigger="@((duelist) => _duelistsShowingDetails.Contains(duelist.DuelistId))">
+        <DataGridColumns>
+            <DataGridColumn TItem="Duelist" Field="Owner.UserName" Caption="Duelist" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                        <Blazorise.FigureImage Source="@duelist.Owner.AvatarUrl" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                    <label>@duelist.Owner.UserName</label>
+                    @if (duelist.OwnerId.Equals(_currentProgressionSeries.HostId))
+                    {
+                        <Blazorise.Badge Class="bg-info">Host</Blazorise.Badge>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridNumericColumn TItem="Duelist" Field="@nameof(Duelist.NumBoosterPacksAvailable)" Caption="Packs Available" HeaderCellClass="bg-primary" />
+            <DataGridNumericColumn TItem="Duelist" Field="@nameof(Duelist.NumBoosterPacksOpened)" Caption="Packs Opened" HeaderCellClass="bg-primary" />
+            <DataGridNumericColumn TItem="Duelist" Field="@nameof(Duelist.NumStarChips)" Caption="Star Chips" HeaderCellClass="bg-primary">
+                <CaptionTemplate>
+                    <span>Star Chips </span>
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </CaptionTemplate>
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <span>@duelist.NumStarChips</span>
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </DisplayTemplate>
+            </DataGridNumericColumn>
+            <DataGridNumericColumn TItem="Duelist" Field="NumUniqueCards" Caption="Card Collection" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <span>@duelist.NumUniqueCards Unique Cards</span>
+
+                    @if (duelist.CardCollectionIsPublic || duelist.DeckIsPublic || CurrentUserId.Equals(_currentProgressionSeries.HostId))
+                    {
+                        <br />
+                        <NavLink href=@($"/managedeck/{duelist.DuelistId}")>
+                            <Blazorise.Button Color="Blazorise.Color.Info">
+                                <span class="oi oi-eye" aria-hidden="true" />
+                                View Cards
+                            </Blazorise.Button>
+                        </NavLink>
+                    }
+                </DisplayTemplate>
+            </DataGridNumericColumn>
+            <DataGridColumn TItem="Duelist" Field="@nameof(Duelist.NumBoosterPacksOpened)" HeaderCellClass="bg-primary" Sortable="false">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <Blazorise.Button Color="Blazorise.Color.Info" @onclick="@(() => ToggleDuelistPackDetails(duelist.DuelistId))">
+                        <span class="oi oi-eye" aria-hidden="true" />
+                        Toggle Pack Details
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+            @if (CurrentUserId.Equals(_currentProgressionSeries.HostId))
+            {
+                <DataGridColumn TItem="Duelist" Field="DuelistId" ShowCaption="false" HeaderCellClass="bg-primary" Sortable="false">
+                    <DisplayTemplate>
+                        @{ Duelist duelist = context as Duelist; }
+                        <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="@( () => OnRemoveThisDuelist(duelist) )">
+                            <span class="oi oi-trash" aria-hidden="true" />
+                            Remove Duelist
+                        </Blazorise.Button>
+                    </DisplayTemplate>
+                </DataGridColumn>
+            }
+        </DataGridColumns>
+        <DetailRowTemplate>
+            @{ Duelist duelist = context as Duelist; }
+            @if (duelist.NumBoosterPacksAvailable > 0)
+            {
+                var availableBoosterPacks = duelist.BoosterPacks.Where(pack => pack.NumAvailable > 0).OrderBy(pack => pack.PackInfo.ReleaseDate);
+                <p class="text-wrap">
+                    <strong>Packs Available: </strong>
+                    @($"[{string.Join("], [", availableBoosterPacks.Select(boosterPack => $"{boosterPack.PackInfo.SetCode}:{boosterPack.NumAvailable}"))}]")
+                </p>
+            }
+            @if (duelist.NumBoosterPacksOpened > 0)
+            {
+                var openedBoosterPacks = duelist.BoosterPacks.Where(pack => pack.NumOpened > 0).OrderBy(pack => pack.PackInfo.ReleaseDate);
+                <p class="text-wrap">
+                    <strong>Packs Opened: </strong>
+                    @($"[{string.Join("], [", openedBoosterPacks.Select(boosterPack => $"{boosterPack.PackInfo.SetCode}:{boosterPack.NumOpened}"))}]")
+                </p>
+            }
+        </DetailRowTemplate>
+    </DataGrid>
+
+    @if (_currentProgressionSeries.HostId.Equals(CurrentUserId))
+    {
+        <Blazorise.CardFooter>
+            <EditForm Model="@_addDuelistModel" OnValidSubmit="OnAddDuelistAsync">
+                <DataAnnotationsValidator />
+                <label>Duelist Name: </label>
+                <InputText @bind-Value="_addDuelistModel.Username" />
+                <Blazorise.Button Color="Blazorise.Color.Success" Type="Blazorise.ButtonType.Submit">
+                    <span class="oi oi-plus" aria-hidden="true" />
+                    Add
+                </Blazorise.Button>
+                <ValidationMessage For="() => _addDuelistModel.Username" />
+                <p class="text-danger">@_addDuelistErrorMessage</p>
+            </EditForm>
+        </Blazorise.CardFooter>
+    }
+
+    // This is a modal dialog for the user to confirm that they want to delete a duelist
+    <Blazorise.Modal @ref="_confirmRemoveDuelistDialog">
+        <Blazorise.ModalContent Centered="true">
+            <Blazorise.ModalBody>
+                <h5>Are you sure you want to remove "<strong>@_duelistToRemove?.Owner?.UserName</strong>" from the Progression Series?</h5>
+            </Blazorise.ModalBody>
+            <Blazorise.ModalFooter>
+                <Blazorise.Button Color="Blazorise.Color.Primary" @onclick="@( () => CloseConfirmRemoveDuelistDialogAsync(false) )">Cancel</Blazorise.Button>
+                <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="@( () => CloseConfirmRemoveDuelistDialogAsync(true) )">Remove</Blazorise.Button>
+            </Blazorise.ModalFooter>
+        </Blazorise.ModalContent>
+    </Blazorise.Modal>
+}

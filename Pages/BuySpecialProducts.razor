@@ -1,0 +1,150 @@
+﻿@page "/buyspecialproducts/{duelistid}"
+
+@inherits AuthorizedComponentBase;
+
+@using System.Web;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentDuelist == null)
+{
+    <h3>This Duelist Does Not Exist</h3>
+}
+else if (!_currentDuelist.OwnerId.Equals(CurrentUserId))
+{
+    <h3>You Are Not @_currentDuelist.Owner.UserName</h3>
+}
+else if (!_currentDuelist.Series.AllowPurchaseSpecialProducts)
+{
+    <h3>The Host of this Progression Series is not currently allowing Participants to purchase Special Products</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentDuelist.Series" Duelist="_currentDuelist" />
+
+    <p>
+        These are products that are weird, and are neither structure/starter decks nor full Booster Packs.
+        <br>
+        For example, the cards that come as promos in a "Special Edition" fit into this category, as well as most other promo cards.
+        <br>
+        With these products, the buyer will receive one copy of every card in this product, just like structure/starter decks.
+        <br>
+        However, rather than a flat price for these products, there will be a price per each card in the product.
+    </p>
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col">
+                    <h3>
+                        Star Chips: @_currentDuelist.NumStarChips
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </h3>
+                </div>
+                <div class="col">
+                    <h4>
+                        Price Per Card: @_currentDuelist.Series.SpecialProductPricePerCard
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </h4>
+                </div>
+            </div>
+        </div>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="_availableSpecialProducts" TItem="SpecialProduct" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+          Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+          RowSelectable="@((item) => false)" Striped="true" Bordered="true" Responsive="true"
+          ShowPager="@(_availableSpecialProducts.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+          ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+          Filterable="@(_availableSpecialProducts.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains"
+          DetailRowTrigger="@((product) => _retrievedSpecialProductIds.ContainsKey(product.SpecialProductId))">
+        <DataGridColumns>
+            <DataGridColumn TItem="SpecialProduct" Field="SpecialProductId" Caption="(Click For Info)" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+                    <div style="background-image:url(@sp.ImageUrl); height:130px; background-position:center; background-size:contain; background-repeat:no-repeat;"
+                     @onclick=@(() => OnOpenUrlInNewTabAsync(sp.SetInfoUrl)) />
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="SpecialProduct" Field="SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="SpecialProduct" Field="SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="SpecialProduct" Field="ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary" Direction="Blazorise.SortDirection.Descending">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+                    <span>@sp.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridNumericColumn TItem="SpecialProduct" Field="NumCards" Caption="Number of Cards" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="SpecialProduct" Field="SpecialProductId" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+
+                    <Blazorise.Button Color="Blazorise.Color.Primary" @onclick="@(() => ToggleRowDetails(sp.SpecialProductId))">
+                        Toggle Your Cards
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="SpecialProduct" Field="SpecialProductId" Caption="Buy Product" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                        uint price = _currentDuelist.Series.SpecialProductPricePerCard * sp.NumCards;
+                        bool isDisabled = _currentDuelist.NumStarChips < price || _isProcessingPurchase;
+                        Blazorise.Color btnType = isDisabled ? Blazorise.Color.Dark : Blazorise.Color.Success;
+                    }
+                    <Blazorise.Button Color="@btnType" Disabled="@isDisabled" Loading="@_isProcessingPurchase" @onclick="() => OnPurchaseSpecialProductAsync(sp)">
+                        @price
+                        <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                            <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                        </Blazorise.Figure>
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+        <DetailRowTemplate>
+            @{
+                SpecialProduct sp = context as SpecialProduct;
+            }
+
+            @if (_retrievedSpecialProductIds.ContainsKey(sp.SpecialProductId) && _retrievedSpecialProductIds[sp.SpecialProductId] > 0)
+            {
+                <strong>
+                    Star Chips Gained: @_retrievedSpecialProductIds[sp.SpecialProductId]
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is16x16">
+                        <Blazorise.FigureImage Source="/images/assets/star_chip.png" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                </strong>
+            }
+
+            <div class="row justify-content-start">
+                @foreach (SpecialProductCard spCard in sp.Cards)
+                {
+                    uint count = _currentDuelist.CardCollection.FirstOrDefault(card => card.InfoId == (ulong)spCard.CardInfoId)?.NumCollection ?? 0;
+                    CardInfo cardInfo = new CardInfo()
+                    {
+                        Name = spCard.CardInfoName,
+                        CardInfoUrl = $"{Constants.YGOPRODECK_DBURL}/card/?search={HttpUtility.UrlEncodeUnicode(spCard.CardInfoName)}",
+                        ImageUrl = $"{Constants.CARDIMAGE_URL}{spCard.CardInfoId}.jpg",
+                    };
+                    NewCardModel newCardModel = new NewCardModel(cardInfo, count, spCard.Rarity);
+
+                    <NewCard CardModel="@newCardModel" />
+                }
+            </div>
+        </DetailRowTemplate>
+    </DataGrid>
+}

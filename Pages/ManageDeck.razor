@@ -1,0 +1,490 @@
+﻿@page "/managedeck/{duelistid}"
+
+@using Blazorise.Snackbar;
+@using Blazorise.DataGrid.Configuration;
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentDuelist == null)
+{
+    <h3>This Duelist Does Not Exist</h3>
+}
+else if (!(_currentDuelist.CardCollectionIsPublic || _currentDuelist.DeckIsPublic)
+        && !_currentDuelist.OwnerId.Equals(CurrentUserId)
+        && !_currentDuelist.Series.HostId.Equals(CurrentUserId))
+{
+    <h3>@_currentDuelist.Owner.UserName's Card Collection And Deck Are Currently Private</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="@_currentDuelist.Series" Duelist="@_currentDuelist" />
+
+    @if (_currentDuelist.OwnerId.Equals(CurrentUserId))
+    {
+        <p>
+            Left-Click on a Card to add to/remove from the Main/Extra Deck.
+            Right-Click on a Card to add to/remove from the Side Deck.
+            <br />
+            Make sure to Save your changes when you're done!
+            Click "Export" to download a .ydk file that can be used in EdoPro.
+            <br />
+            When filtering on a number (like ATK) you can use @("<, <=, >, or >=")
+        </p>
+        <hr />
+    }
+
+    @* Deck Controls *@
+    @if (_currentDuelist.OwnerId.Equals(CurrentUserId))
+    {
+        <div class="container-fluid">
+            <div class="row justify-content-between">
+                <div class="col-auto align-self-center">
+                    <Blazorise.Switch TValue="bool" @bind-Checked="_currentDuelist.DeckIsPublic">
+                        <strong>Deck Public</strong>
+                    </Blazorise.Switch>
+                </div>
+                <div class="col-auto align-self-center">
+                    <Blazorise.Switch TValue="bool" @bind-Checked="_currentDuelist.CardCollectionIsPublic">
+                        <strong>Cards Public</strong>
+                    </Blazorise.Switch>
+                </div>
+                <div class="col" />
+                <div class="col-auto">
+                    <Blazorise.Button Color="Blazorise.Color.Warning" @onclick="OnClearDeck">
+                        <Blazorise.Icon Name="Blazorise.IconName.Clear" />
+                        Clear Deck
+                    </Blazorise.Button>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="OnCancelChangesAsync" Disabled="@(!_cardsToUpdate.Any())">
+                        <span class="oi oi-x" aria-hidden="true" />
+                        Cancel Changes
+                    </Blazorise.Button>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Button Color="Blazorise.Color.Success" @onclick="OnSaveChangesAsync" Disabled="@(!_cardsToUpdate.Any())">
+                        <Blazorise.Icon Name="Blazorise.IconName.Save" />
+                        Save Changes
+                    </Blazorise.Button>
+                </div>
+                <div class="col-auto">
+                    <Blazorise.Button Color="Blazorise.Color.Secondary" @onclick="OnExportDeckAsync">
+                        <i class="fas fa-file-export" />
+                        Export Deck
+                    </Blazorise.Button>
+                </div>
+            </div>
+            <div class="row justify-content-end">
+                <p class="text-danger">@_exportDeckErrorMessage</p>
+                <Snackbar @ref="_saveConfirmationSnackbar" Color="SnackbarColor.Success" Interval="2000" Location="SnackbarLocation.Right">
+                    <SnackbarBody><strong>Saved Successfully</strong></SnackbarBody>
+                </Snackbar>
+            </div>
+        </div>
+    }
+
+    @* Filters *@
+    @if (_currentDuelist.OwnerId.Equals(CurrentUserId) || _currentDuelist.Series.HostId.Equals(CurrentUserId) || _currentDuelist.CardCollectionIsPublic)
+    {
+        <Blazorise.Table Borderless="true">
+            <Blazorise.TableBody>
+                <Blazorise.TableRow>
+                    <Blazorise.TableRowCell ColumnSpan="2">
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    Category:
+                                </div>
+                                <div class="col-auto">
+                                    <SelectList TItem="CardCategory" TValue="CardCategory" Data="@(Enum.GetValues<CardCategory>())"
+                                        TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                        SelectedValue="_selectedCardCategory" SelectedValueChanged="OnSelectedCategoryChanged" />
+                                </div>
+                                <div class="col">
+                                    @{
+                                        List<SubCategory> subCategories = new List<SubCategory>();
+                                        switch (_selectedCardCategory)
+                                        {
+                                            case CardCategory.All:
+                                                subCategories = Enum.GetValues<SubCategory>().ToList();
+                                                break;
+                                            case CardCategory.Monster:
+                                                subCategories = YgoProgressionDuels.Shared.Constants.MonsterCategories;
+                                                break;
+                                            case CardCategory.Spell:
+                                                subCategories = YgoProgressionDuels.Shared.Constants.SpellCategories;
+                                                break;
+                                            case CardCategory.Trap:
+                                                subCategories = YgoProgressionDuels.Shared.Constants.TrapCategories;
+                                                break;
+                                        }
+
+                                        <SelectList TItem="SubCategory" TValue="SubCategory" Data="@subCategories"
+                                        TextField="@((item) => item.GetDisplayName())" ValueField="@((item) => item)" @bind-SelectedValue="_selectedSubCategory" />
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    Level/Rank/Link:
+                                </div>
+                                <div class="col">
+                                    <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_levelRankLinkFilterString" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    Scale:
+                                </div>
+                                <div class="col">
+                                    <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_scaleFilterString" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell ColumnSpan="2">
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col">
+                                    <Blazorise.TextEdit @bind-Text="_textSearchString" Class="form-inline" Placeholder="Text Search..." />
+                                </div>
+                                <div class="col-auto">
+                                    <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="OnClearFilters">Clear Filters</Blazorise.Button>
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                </Blazorise.TableRow>
+                <Blazorise.TableRow>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    Attribute:
+                                </div>
+                                <div class="col">
+                                    <SelectList TItem="MonsterAttribute" TValue="MonsterAttribute" Data="@(Enum.GetValues<MonsterAttribute>())"
+                                        TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                        @bind-SelectedValue="_selectedMonsterAttribute" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    Type:
+                                </div>
+                                <div class="col">
+                                    <SelectList TItem="MonsterType" TValue="MonsterType" Data="@(Enum.GetValues<MonsterType>())"
+                                        TextField="@((item) => item.GetDisplayName())" ValueField="@((item) => item)"
+                                        @bind-SelectedValue="_selectedMonsterType" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    ATK:
+                                </div>
+                                <div class="col">
+                                    <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_atkFilterString" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell>
+                        <div class="container-fluid">
+                            <div class="row no-gutters">
+                                <div class="col-auto align-self-center">
+                                    DEF:
+                                </div>
+                                <div class="col">
+                                    <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_defFilterString" />
+                                </div>
+                            </div>
+                        </div>
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell TextAlignment="Blazorise.TextAlignment.Center">
+                        Sort By:
+                        <SelectList TItem="SortOption" TValue="SortOption" Data="@(Enum.GetValues<SortOption>())"
+                            TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                            SelectedValue="_sortOption1" SelectedValueChanged="OnSortOption1Changed"
+                            Class="w-auto" />
+                    </Blazorise.TableRowCell>
+                    <Blazorise.TableRowCell TextAlignment="Blazorise.TextAlignment.Center">
+                        Then By:
+                        @{
+                            List<SortOption> secondarySortOptions = Enum.GetValues<SortOption>().ToList();
+                            if (!_sortOption1.Equals(SortOption.Default))
+                            {
+                                secondarySortOptions.Remove(_sortOption1);
+                            }
+                        }
+                        <SelectList TItem="SortOption" TValue="SortOption" Data="@secondarySortOptions"
+                            TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                            SelectedValue="_sortOption2" SelectedValueChanged="OnSortOption2Changed"
+                            Class="w-auto" />
+                    </Blazorise.TableRowCell>
+                </Blazorise.TableRow>
+            </Blazorise.TableBody>
+        </Blazorise.Table>
+    }
+
+    <div class="container-fluid">
+        @* Main *@
+        <div class="row" style="height:99vh;">
+            @* Card Info *@
+            <div class="col-auto h-100" style="width:20vw;">
+                <div class="overflow-auto h-100">
+                    <Blazorise.Card Class="w-100">
+                        <Blazorise.CardBody>
+                            @if (_currentCard == null)
+                            {
+                                <Blazorise.Image Source="/images/assets/unkown.jpg" Class="w-100" />
+                            }
+                            else
+                            {
+                                <div @onclick=@(() => OnOpenUrlInNewTabAsync(_currentCard.CardInfoUrl))>
+                                    <Blazorise.Image Source="@_currentCard.ImageUrl" Class="w-100" />
+                                </div>
+                                <h5>@_currentCard.Name</h5>
+
+                                @if (_currentCard.CardCategory.Equals(CardCategory.Monster))
+                                {
+                                    <span>@($"[{_currentCard.Type.Replace("Monster", string.Empty).Trim()}] {_currentCard.Attribute} {_currentCard.Race}")</span>
+                                    <br />
+                                    if (_currentCard.Type.Contains("Link", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        <span>@($"{_currentCard.ATK}/Link {_currentCard.Link}")</span>
+                                    }
+                                    else if (_currentCard.Type.Contains("Pendulum", StringComparison.CurrentCultureIgnoreCase))
+                                    {
+                                        <span>@($"[★{_currentCard.Level}] {_currentCard.ATK}/{_currentCard.DEF}   {_currentCard.Scale}/{_currentCard.Scale}")</span>
+                                    }
+                                    else
+                                    {
+                                        <span>@($"[★{_currentCard.Level}] {_currentCard.ATK}/{_currentCard.DEF}")</span>
+                                    }
+                                }
+                                else
+                                {
+                                    <span>@($"[{_currentCard.Type.Replace("Card", string.Empty).Trim()} | {_currentCard.Race}]")</span>
+                                }
+
+                                <p>@_currentCard.Description.Replace("----------------------------------------", "\n----------------------------------------\n")</p>
+                            }
+                        </Blazorise.CardBody>
+                    </Blazorise.Card>
+                </div>
+            </div>
+            @* Deck *@
+            <div class="col h-100">
+                @if (_currentDuelist.OwnerId.Equals(CurrentUserId) || _currentDuelist.Series.HostId.Equals(CurrentUserId) || _currentDuelist.DeckIsPublic)
+                {
+                    <div class="overflow-auto h-100">
+                        @* Main Deck *@
+                        <Blazorise.Card>
+                            @{
+                                SortedSet<Card> mainDeckCards = new SortedSet<Card>(_cardCollection.Where(card => card.NumMainDeck > 0));
+                            }
+                            <Blazorise.CardHeader Class="bg-primary">
+                                <div class="row justify-content-between">
+                                    <div class="col-auto align-content-start">
+                                        Main Deck: @mainDeckCards.Sum(card => card.NumMainDeck)
+                                    </div>
+                                    <div class="col-auto align-content-end">
+                                        Monster: @mainDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Monster)).Sum(card => card.NumMainDeck)
+                                        | Spell: @mainDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Spell)).Sum(card => card.NumMainDeck)
+                                        | Trap: @mainDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Trap)).Sum(card => card.NumMainDeck)
+                                    </div>
+                                </div>
+                            </Blazorise.CardHeader>
+                            <Blazorise.CardBody>
+                                @foreach (Card card in mainDeckCards)
+                                {
+                                    <span @onmouseover="@(() => OnMouseOverCard(card))"
+                              @onclick="@(() => OnLeftClickMainExtraDeck(card))"
+                              @oncontextmenu="@(() => OnRightClickMainExtraDeck(card))">
+                                        @for (int i = 0; i < card.NumMainDeck; i++)
+                                        {
+                                            <DeckCard Card="card" />
+                                        }
+                                    </span>
+                                }
+                            </Blazorise.CardBody>
+                        </Blazorise.Card>
+                        <br />
+                        @* Extra Deck *@
+                        <Blazorise.Card>
+                            @{
+                                SortedSet<Card> extraDeckCards = new SortedSet<Card>(_cardCollection.Where(card => card.NumExtraDeck > 0));
+                            }
+                            <Blazorise.CardHeader Class="bg-secondary">
+                                <div class="row justify-content-between">
+                                    <div class="col-auto align-content-start">
+                                        Extra Deck: @extraDeckCards.Sum(card => card.NumExtraDeck)
+                                    </div>
+                                    <div class="col-auto align-content-end">
+                                        Fusion: @extraDeckCards.Where(card => card.Info.Type.Contains("Fusion", StringComparison.OrdinalIgnoreCase)).Sum(card => card.NumExtraDeck)
+                                        | Synchro: @extraDeckCards.Where(card => card.Info.Type.Contains("Synchro", StringComparison.OrdinalIgnoreCase)).Sum(card => card.NumExtraDeck)
+                                        | Xyz: @extraDeckCards.Where(card => card.Info.Type.Contains("Xyz", StringComparison.OrdinalIgnoreCase)).Sum(card => card.NumExtraDeck)
+                                        | Link: @extraDeckCards.Where(card => card.Info.Type.Contains("Link", StringComparison.OrdinalIgnoreCase)).Sum(card => card.NumExtraDeck)
+                                    </div>
+                                </div>
+                            </Blazorise.CardHeader>
+                            <Blazorise.CardBody>
+                                @foreach (Card card in extraDeckCards)
+                                {
+                                    <span @onmouseover="@(() => OnMouseOverCard(card))"
+                              @onclick="@(() => OnLeftClickMainExtraDeck(card))"
+                              @oncontextmenu="@(() => OnRightClickMainExtraDeck(card))">
+                                        @for (int i = 0; i < card.NumExtraDeck; i++)
+                                        {
+                                            <DeckCard Card="card" />
+                                        }
+                                    </span>
+                                }
+                            </Blazorise.CardBody>
+                        </Blazorise.Card>
+                        <br />
+                        @* Side Deck *@
+                        <Blazorise.Card>
+                            @{
+                                SortedSet<Card> sideDeckCards = new SortedSet<Card>(_cardCollection.Where(card => card.NumSideDeck > 0));
+                            }
+                            <Blazorise.CardHeader Class="bg-info">
+                                <div class="row justify-content-between">
+                                    <div class="col-auto align-content-start">
+                                        Side Deck: @sideDeckCards.Sum(card => card.NumSideDeck)
+                                    </div>
+                                    <div class="col-auto align-content-end">
+                                        Monster: @sideDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Monster)).Sum(card => card.NumSideDeck)
+                                        | Spell: @sideDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Spell)).Sum(card => card.NumSideDeck)
+                                        | Trap: @sideDeckCards.Where(card => card.Info.CardCategory.Equals(CardCategory.Trap)).Sum(card => card.NumSideDeck)
+                                    </div>
+                                </div>
+                            </Blazorise.CardHeader>
+                            <Blazorise.CardBody>
+                                @foreach (Card card in sideDeckCards)
+                                {
+                                    <span @onmouseover="@(() => OnMouseOverCard(card))"
+                              @onclick="@(() => OnLeftClickSideDeck(card))"
+                              @oncontextmenu="@(() => OnRightClickSideDeck(card))">
+                                        @for (int i = 0; i < card.NumSideDeck; i++)
+                                        {
+                                            <DeckCard Card="card" />
+                                        }
+                                    </span>
+                                }
+                            </Blazorise.CardBody>
+                        </Blazorise.Card>
+                    </div>
+                }
+                else
+                {
+                    <h5>Deck Is Currently Private</h5>
+                }
+            </div>
+            @* Card Collection *@
+            <div class="col-auto h-100 " style="width:20vw;">
+                @if (_currentDuelist.OwnerId.Equals(CurrentUserId) || _currentDuelist.Series.HostId.Equals(CurrentUserId) || _currentDuelist.CardCollectionIsPublic)
+                {
+                    <Blazorise.CardHeader Style="height:5vh;" Class="bg-primary">Results: @_cardCollection.Count(card => OnCustomFilter(card))</Blazorise.CardHeader>
+                    <div class="overflow-auto" style="height:94vh;">
+                        @{
+                            VirtualizeOptions virtualizeOptions = new VirtualizeOptions() { DataGridHeight = "94vh" };
+                        }
+                        <DataGrid TItem="Card" Data="_cardCollection" Sortable="false" CustomFilter="@OnCustomFilter" PageSize="@int.MaxValue"
+                          RowSelectable="@((item) => false)" Hoverable="true" ShowCaptions="false" Narrow="true" Virtualize="true" VirtualizeOptions="@virtualizeOptions">
+                            <DataGridColumns>
+                                <DataGridColumn TItem="Card" Field="Info">
+                                    <DisplayTemplate>
+                                        @{
+                                            Card card = context as Card;
+                                        }
+                                        <div @onmouseover="@(() => OnMouseOverCard(card))"
+                                     @onclick="@(() => OnLeftClickCardCollection(card))"
+                                     @oncontextmenu="@(() => OnRightClickCardCollection(card))">
+                                            <DeckCard Card="card" />
+                                        </div>
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                                <DataGridColumn TItem="Card" Field="Info">
+                                    <DisplayTemplate>
+                                        @{
+                                            Card card = context as Card;
+                                        }
+                                        <div @onmouseover="@(() => OnMouseOverCard(card))"
+                                     @onclick="@(() => OnLeftClickCardCollection(card))"
+                                     oncontextmenu="return false;">
+                                            <div @oncontextmenu="@(() => OnRightClickCardCollection(card))">
+                                                <span><strong>@card.Info.Name</strong></span>
+                                                <br />
+                                                @if (card.Info.CardCategory.Equals(CardCategory.Monster))
+                                                {
+                                                    if (card.Info.Type.Contains("Link", StringComparison.CurrentCultureIgnoreCase))
+                                                    {
+                                                        <span>@($"{card.Info.Attribute}/{card.Info.Race}")</span>
+                                                        <br />
+                                                        <span>@($"{card.Info.ATK}/Link {card.Info.Link}")</span>
+                                                    }
+                                                    else
+                                                    {
+                                                        <span>@($"{card.Info.Attribute}/{card.Info.Race}  ★{card.Info.Level}")</span>
+                                                        <br />
+
+                                                        if (card.Info.Type.Contains("Pendulum", StringComparison.CurrentCultureIgnoreCase))
+                                                        {
+                                                            <span>@($"{card.Info.ATK}/{card.Info.DEF}   {card.Info.Scale}/{card.Info.Scale}")</span>
+                                                        }
+                                                        else
+                                                        {
+                                                            <span>@($"{card.Info.ATK}/{card.Info.DEF}")</span>
+                                                        }
+                                                    }
+                                                    <br />
+                                                }
+                                                else
+                                                {
+                                                    <span>@($"{card.Info.Type.Replace("Card", string.Empty).Trim()} | {card.Info.Race}")</span>
+                                                    <br />
+                                                }
+                                                <span>@($"{card.GetTotalInDeck()} / {card.NumCollection}   ")</span>
+                                                @if (card.IsNew)
+                                                {
+                                                    <Blazorise.Badge Class="bg-warning">NEW</Blazorise.Badge>
+                                                }
+                                            </div>
+                                        </div>
+                                    </DisplayTemplate>
+                                </DataGridColumn>
+                            </DataGridColumns>
+                        </DataGrid>
+                    </div>
+                }
+                else
+                {
+                    <h5>Card Collection Is Currently Private</h5>
+                }
+            </div>
+        </div>
+    </div>
+}

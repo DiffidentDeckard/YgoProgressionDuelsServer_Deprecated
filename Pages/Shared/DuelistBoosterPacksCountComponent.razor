@@ -1,0 +1,9 @@
+﻿
+
+<strong>Total: @_boosterPacks.Sum(boosterPack => GetBoosterPackCount(boosterPack))</strong>
+<br />
+
+@if (_boosterPacks.Any())
+{
+    <p class="text-wrap">@($"[{string.Join("], [", _boosterPacks.Select(boosterPack => $"{boosterPack.PackInfo.SetCode}:{GetBoosterPackCount(boosterPack)}"))}]")</p>
+}

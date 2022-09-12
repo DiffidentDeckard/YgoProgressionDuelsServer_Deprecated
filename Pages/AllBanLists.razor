@@ -1,0 +1,70 @@
+﻿@page "/allbanlists"
+
+@if (_isLoading || _banLists?.Any() != true)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    <div class="container-fluid">
+        <div class="row">
+            <div class="col-auto align-self-center">
+                <h5> Choose a BanList: </h5>
+            </div>
+            <div class="col-auto align-self-center">
+                <SelectList TItem="BanList" TValue="Guid?" Data="_banLists"
+                            TextField="@(item => item.ReleaseDate.ToShortDateString())"
+                            ValueField="@(item => item.BanListId)"
+                            SelectedValue="@_currentBanListId"
+                            SelectedValueChanged="@OnSelectedBanListChanged"
+                            Class="w-auto" />
+            </div>
+        </div>
+    </div>
+
+    <hr />
+    @if (_currentBanList != null)
+    {
+        <h3>BanList: @_currentBanList.ReleaseDate.ToShortDateString()</h3>
+
+        <div class="container-fluid">
+            <div class="row">
+                <div class="col">
+                    <h5>Forbidden: @_currentBanList.Entries.Count(entry => entry.BanListStatus == BanListStatus.Forbidden)</h5>
+                </div>
+                <div class="col">
+                    <h5>Limited: @_currentBanList.Entries.Count(entry => entry.BanListStatus == BanListStatus.Limited)</h5>
+                </div>
+                <div class="col">
+                    <h5>Semi-Limited: @_currentBanList.Entries.Count(entry => entry.BanListStatus == BanListStatus.SemiLimited)</h5>
+                </div>
+            </div>
+        </div>
+
+        <DataGrid TItem="BanListEntry"
+                  Data="_currentBanList.Entries.OrderBy(entry => entry.BanListStatus)
+            .ThenBy(entry => entry.CardInfo.CardCategory)
+            .ThenBy(entry => entry.CardInfo).ToList()"
+                  Filterable="true" FilterMethod="DataGridFilterMethod.Contains"
+                  Sortable="true" SortMode="DataGridSortMode.Single"
+                  RowSelectable="@((item) => false)"
+                  Striped="true" Bordered="true"
+                  Resizable="true" Responsive="true"
+                  PageSize="@int.MaxValue">
+            <DataGridColumns>
+                <DataGridColumn TItem="BanListEntry" Field="CardInfo.ImageUrl" ShowCaption="false" Sortable="false" Filterable="false">
+                    <DisplayTemplate>
+                        @{ BanListEntry entry = context as BanListEntry;}
+                        <BanListCard Entry="entry" />
+                    </DisplayTemplate>
+                </DataGridColumn>
+                <DataGridColumn TItem="BanListEntry" Field="CardInfo.Name" Caption="Card Name" />
+                <DataGridColumn TItem="BanListEntry" Field="@nameof(BanListEntry.BanListStatus)" Caption="Limit Status" />
+                <DataGridColumn TItem="BanListEntry" Field="CardInfo.Type" Caption="Card Type" />
+                <DataGridColumn TItem="BanListEntry" Field="CardInfo.Description" Caption="Description" />
+            </DataGridColumns>
+        </DataGrid>
+    }
+}

@@ -1,0 +1,25 @@
+﻿@page "/progressionseries/{progressionseriesid}/banlist"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentProgressionSeries" Duelist="_currentDuelist" />
+
+    <h2>BanList Format: @_currentProgressionSeries.BanListFormat.GetDisplayName()</h2>
+    @if (_currentProgressionSeries.BanListFormat == BanListFormat.None)
+    {
+        <p>All cards are unlimited, banlist shown below is not in effect.</p>
+    }
+    else if (_currentProgressionSeries.BanListFormat == BanListFormat.Traditional)
+    {
+        <p>All cards that are marked as Forbidden are instead Limited.</p>
+    }
+    <ViewBanList BanListId="@_currentProgressionSeries.CurrentBanListId" />
+}

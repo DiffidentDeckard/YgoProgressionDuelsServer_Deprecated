@@ -1,0 +1,65 @@
+﻿@page "/progressionseries/{progressionseriesid}/tournament"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentProgressionSeries" Duelist="_currentDuelist" />
+    <hr />
+
+    <div class="container-fluid">
+        <div class="row justify-content-between">
+            <div class="col-auto align-content-start">
+                <h5>Next Tournament: @_currentProgressionSeries.NextTournamentStructure.GetDisplayName()</h5>
+            </div>
+            <div class="col" />
+            @if (CurrentUserId.Equals(_currentProgressionSeries.HostId) || CurrentUserId.ToString().Equals("A8AE0634-7385-43AD-D1EF-08D92FB24385", StringComparison.CurrentCultureIgnoreCase))
+            {
+                <div class="col-auto align-content-end">
+                    @{
+                        bool isNextRoundDisabled = true;
+                        Tournament currentTournament = _currentProgressionSeries.Tournaments.FirstOrDefault();
+                        if (currentTournament != null)
+                        {
+                            int numRounds = currentTournament.Pairings.GroupBy(pairing => pairing.RoundNumber).Count();
+                            isNextRoundDisabled = _isworking || numRounds >= currentTournament.GetExpectedNumRounds();
+                        }
+                    }
+                    <Blazorise.Button Color="Blazorise.Color.Primary" Disabled="@isNextRoundDisabled"
+                                      Clicked="OnNextRoundAsync">
+                        <i class="fas fa-angle-right" />
+                        Next Round
+                    </Blazorise.Button>
+                </div>
+                <div class="col-auto align-content-end">
+                    <Blazorise.Button Color="Blazorise.Color.Warning" Disabled="@(_isworking || _currentProgressionSeries.Duelists.Count < 4)"
+                                      Clicked="OnNewTournamentAsync">
+                        <i class="fas fa-angle-double-right" />
+                        New Tournament
+                    </Blazorise.Button>
+                </div>
+            }
+        </div>
+    </div>
+
+    @if (_currentProgressionSeries.Duelists.Count < 4)
+    {
+        <p class="text-danger">
+            You need at least 4 Duelists in order to generate new pairings.
+        </p>
+    }
+
+    <Blazorise.Accordion Style="margin:5px;">
+        @for (int i = 0; i < _currentProgressionSeries.Tournaments.Count; i++)
+        {
+            Tournament tournament = _currentProgressionSeries.Tournaments.ElementAt(i);
+            <TournamentComponent Tournament="@tournament" IsCurrentTournament="@(i == 0)" />
+        }
+    </Blazorise.Accordion>
+}

@@ -1,0 +1,115 @@
+﻿@page "/progressionseries/{progressionseriesid}/distributeboosterpacks"
+
+@inherits AuthorizedComponentBase;
+
+@if (IsLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentProgressionSeries == null)
+{
+    <h3>This Progression Series Does Not Exist</h3>
+}
+else if (!_currentProgressionSeries.HostId.Equals(CurrentUserId))
+{
+    <h3>You Are Not The Host Of This Progression Series</h3>
+}
+else
+{
+    <ProgressionSeriesNavBar ProgressionSeries="_currentProgressionSeries" Duelist="_currentDuelist" />
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h5>1. Select any number of duelists to distribute booster packs to:</h5>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="@_currentProgressionSeries.Duelists" TItem="Duelist" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              SelectionMode="DataGridSelectionMode.Multiple" Striped="true" Bordered="true" Responsive="true" @bind-SelectedRows="_selectedDuelists"
+              ShowPager="@(_currentProgressionSeries.Duelists.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+              ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+              Filterable="@(_currentProgressionSeries.Duelists.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains">
+        <DataGridColumns>
+            <DataGridMultiSelectColumn TItem="Duelist" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="Duelist" Field="Owner.UserName" Caption="Duelist" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                        <Blazorise.FigureImage Source="@duelist.Owner.AvatarUrl" AlternateText="Image Not Found" />
+                    </Blazorise.Figure>
+                    <label>@duelist.Owner.UserName</label>
+                    @if (duelist.OwnerId.Equals(_currentProgressionSeries.HostId))
+                    {
+                        <Blazorise.Badge Class="bg-info">Host</Blazorise.Badge>
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridNumericColumn TItem="Duelist" Field="NumBoosterPacksAvailable" Caption="Packs Available" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <DuelistBoosterPacksCountComponent Duelist="@duelist" Mode="DuelistBoosterPackMode.Available" />
+                </DisplayTemplate>
+            </DataGridNumericColumn>
+            <DataGridNumericColumn TItem="Duelist" Field="NumBoosterPacksOpened" Caption="Packs Opened" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ Duelist duelist = context as Duelist; }
+                    <DuelistBoosterPacksCountComponent Duelist="@duelist" Mode="DuelistBoosterPackMode.Opened" />
+                </DisplayTemplate>
+            </DataGridNumericColumn>
+        </DataGridColumns>
+    </DataGrid>
+    <hr />
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h5>2. Select any number of booster packs (Scroll down to continue):</h5>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="_boosterPackInfos" TItem="BoosterPackInfo" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              SelectionMode="DataGridSelectionMode.Multiple" Striped="true" Bordered="true" Responsive="true" @bind-SelectedRows="_selectedBoosterPackInfos"
+              ShowPager="@(_boosterPackInfos.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+              ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+              Filterable="@(_boosterPackInfos.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains">
+        <DataGridColumns>
+            <DataGridMultiSelectColumn TItem="BoosterPackInfo" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BoosterPackInfo" Field="BoosterPackInfoId" Caption="(Click For Info)" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = context as BoosterPackInfo; }
+                    <div class="row justify-content-center" @onclick=@(() => OnOpenUrlInNewTabAsync(packInfo.SetInfoUrl))>
+                        <div class="col-auto">
+                            <div style="background-image:url(@packInfo.ImageUrl); height:130px; width:100px; background-position:center; background-size:cover;" />
+                        </div>
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="BoosterPackInfo" Field="SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BoosterPackInfo" Field="SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="BoosterPackInfo" Field="ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary" Direction="Blazorise.SortDirection.Ascending">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = context as BoosterPackInfo; }
+                    <span>@packInfo.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+        </DataGridColumns>
+    </DataGrid>
+    <hr />
+
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h5>3. Decide how many of each booster pack to distribute to each duelist:</h5>
+    </Blazorise.CardHeader>
+
+    <Blazorise.CardBody>
+        <EditForm Model="@_distributePacksModel" OnValidSubmit="OnDistributeBoosterPacksAsync">
+            <DataAnnotationsValidator />
+            <label>Number of packs: </label>
+            <InputNumber @bind-Value="@_distributePacksModel.NumPacksToDistribute" />
+            <Blazorise.Button Color="Blazorise.Color.Success" Type="Blazorise.ButtonType.Submit" Disabled="@_isworking">
+                <Blazorise.Icon Name="Blazorise.IconName.Gift" />
+                Distribute Packs
+            </Blazorise.Button>
+            <ValidationMessage For="() => _distributePacksModel.NumPacksToDistribute" />
+            <p class="text-danger">@_distributePacksErrorMessage</p>
+        </EditForm>
+    </Blazorise.CardBody>
+}

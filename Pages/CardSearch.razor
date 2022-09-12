@@ -1,0 +1,250 @@
+﻿@page "/cardsearch"
+
+@using Blazorise.DataGrid.Configuration;
+
+@if (_isLoading || _allCards?.Any() != true)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    @* Filters *@
+    <Blazorise.Table Borderless="true">
+        <Blazorise.TableBody>
+            <Blazorise.TableRow>
+                <Blazorise.TableRowCell ColumnSpan="2">
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                Category:
+                            </div>
+                            <div class="col-auto">
+                                <SelectList TItem="CardCategory" TValue="CardCategory" Data="@(Enum.GetValues<CardCategory>())"
+                                            TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                            SelectedValue="_selectedCardCategory" SelectedValueChanged="OnSelectedCategoryChanged" />
+                            </div>
+                            <div class="col">
+                                @{
+                                    List<SubCategory> subCategories = new List<SubCategory>();
+                                    switch (_selectedCardCategory)
+                                    {
+                                        case CardCategory.All:
+                                            subCategories = Enum.GetValues<SubCategory>().ToList();
+                                            break;
+                                        case CardCategory.Monster:
+                                            subCategories = Constants.MonsterCategories;
+                                            break;
+                                        case CardCategory.Spell:
+                                            subCategories = Constants.SpellCategories;
+                                            break;
+                                        case CardCategory.Trap:
+                                            subCategories = Constants.TrapCategories;
+                                            break;
+                                    }
+
+                                    <SelectList TItem="SubCategory" TValue="SubCategory" Data="@subCategories"
+                                                TextField="@((item) => item.GetDisplayName())" ValueField="@((item) => item)" @bind-SelectedValue="_selectedSubCategory" />
+                                }
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                Level/Rank/Link:
+                            </div>
+                            <div class="col">
+                                <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_levelRankLinkFilterString" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                Scale:
+                            </div>
+                            <div class="col">
+                                <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_scaleFilterString" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell ColumnSpan="2">
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col">
+                                <Blazorise.TextEdit @bind-Text="_textSearchString" Class="form-inline" Placeholder="Text Search..." />
+                            </div>
+                            <div class="col-auto">
+                                <Blazorise.Button Color="Blazorise.Color.Danger" @onclick="OnClearFilters">Clear Filters</Blazorise.Button>
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+            </Blazorise.TableRow>
+            <Blazorise.TableRow>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                Attribute:
+                            </div>
+                            <div class="col">
+                                <SelectList TItem="MonsterAttribute" TValue="MonsterAttribute" Data="@(Enum.GetValues<MonsterAttribute>())"
+                                            TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                            @bind-SelectedValue="_selectedMonsterAttribute" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                Type:
+                            </div>
+                            <div class="col">
+                                <SelectList TItem="MonsterType" TValue="MonsterType" Data="@(Enum.GetValues<MonsterType>())"
+                                            TextField="@((item) => item.GetDisplayName())" ValueField="@((item) => item)"
+                                            @bind-SelectedValue="_selectedMonsterType" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                ATK:
+                            </div>
+                            <div class="col">
+                                <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_atkFilterString" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell>
+                    <div class="container-fluid">
+                        <div class="row no-gutters">
+                            <div class="col-auto align-self-center">
+                                DEF:
+                            </div>
+                            <div class="col">
+                                <Blazorise.TextEdit MaskType="Blazorise.MaskType.RegEx" EditMask="^[<>]?=?[0-9]*$" @bind-Text="_defFilterString" />
+                            </div>
+                        </div>
+                    </div>
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell TextAlignment="Blazorise.TextAlignment.Center">
+                    Sort By:
+                    <SelectList TItem="SortOption" TValue="SortOption" Data="@SortOptions"
+                                TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                SelectedValue="_sortOption1" SelectedValueChanged="OnSortOption1Changed"
+                                Class="w-auto" />
+                </Blazorise.TableRowCell>
+                <Blazorise.TableRowCell TextAlignment="Blazorise.TextAlignment.Center">
+                    Then By:
+                    @{
+                        List<SortOption> secondarySortOptions = Enum.GetValues<SortOption>().ToList();
+                        if (!_sortOption1.Equals(SortOption.Default))
+                        {
+                            secondarySortOptions.Remove(_sortOption1);
+                        }
+                    }
+                    <SelectList TItem="SortOption" TValue="SortOption" Data="@secondarySortOptions"
+                                TextField="@((item) => item.ToString())" ValueField="@((item) => item)"
+                                SelectedValue="_sortOption2" SelectedValueChanged="OnSortOption2Changed"
+                                Class="w-auto" />
+                </Blazorise.TableRowCell>
+            </Blazorise.TableRow>
+        </Blazorise.TableBody>
+    </Blazorise.Table>
+
+    @* Main *@
+    VirtualizeOptions virtualizeOptions = new VirtualizeOptions() { DataGridHeight = "80vh" };
+    <DataGrid TItem="CardInfo" Data="_allCards" Sortable="false" CustomFilter="@OnCustomFilter" PageSize="@int.MaxValue"
+              Virtualize="true" VirtualizeOptions="@virtualizeOptions"
+              RowSelectable="@((cardInfo) => false)" Hoverable="false" ShowCaptions="false" Narrow="true"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              DetailRowTrigger="@((cardInfo) => _retrievedCardInfos.ContainsKey(cardInfo.CardInfoId))">
+        <DataGridColumns>
+            <DataGridColumn TItem="CardInfo" Field="CardInfoId">
+                <DisplayTemplate>
+                    @{ CardInfo cardInfo = context as CardInfo; }
+                    <div @onclick=@(() => OnOpenUrlInNewTabAsync(cardInfo.CardInfoUrl))>
+                        <Blazorise.Image Source="@cardInfo.ImageUrl"
+                                         Style="height:100px;" />
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="CardInfo" Field="Name">
+                <DisplayTemplate>
+                    @{ CardInfo cardInfo = context as CardInfo; }
+                    <div>
+                        <span><strong>@cardInfo.Name</strong></span>
+                        <br />
+                        @if (cardInfo.CardCategory.Equals(CardCategory.Monster))
+                        {
+                            if (cardInfo.Type.Contains("Link", StringComparison.CurrentCultureIgnoreCase))
+                            {
+                                <span>@($"{cardInfo.Attribute}/{cardInfo.Race}")</span>
+                                <br />
+                                <span>@($"{cardInfo.ATK}/Link {cardInfo.Link}")</span>
+                            }
+                            else
+                            {
+                                <span>@($"{cardInfo.Attribute}/{cardInfo.Race}  ★{cardInfo.Level}")</span>
+                                <br />
+
+                                if (cardInfo.Type.Contains("Pendulum", StringComparison.CurrentCultureIgnoreCase))
+                                {
+                                    <span>@($"{cardInfo.ATK}/{cardInfo.DEF}   {cardInfo.Scale}/{cardInfo.Scale}")</span>
+                                }
+                                else
+                                {
+                                    <span>@($"{cardInfo.ATK}/{cardInfo.DEF}")</span>
+                                }
+                            }
+                            <br />
+                        }
+                        else
+                        {
+                            <span>@($"{cardInfo.Type.Replace("Card", string.Empty).Trim()} | {cardInfo.Race}")</span>
+                            <br />
+                        }
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="CardInfo" Field="Description" />
+            <DataGridColumn TItem="CardInfo" Field="CardInfoId">
+                <DisplayTemplate>
+                    @{ ulong cardInfoId = (context as CardInfo).CardInfoId; }
+
+                    <Blazorise.Button Color="Blazorise.Color.Primary"
+                                      @onclick="@(() => ShowRowDetails(cardInfoId))"
+                                      Disabled="@(_retrievedCardInfos.ContainsKey(cardInfoId) && !(_retrievedCardInfos[cardInfoId].Item1.Contains("Error") || _retrievedCardInfos[cardInfoId].Item2.Contains("Error")))"
+                                      Loading="@(_retrievedCardInfos.ContainsKey(cardInfoId) && (_retrievedCardInfos[cardInfoId].Item1.Contains("Loading") || _retrievedCardInfos[cardInfoId].Item2.Contains("Loading")))">
+                        Find Sets and BanLists
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+        <DetailRowTemplate>
+            @{
+                CardInfo cardInfo = context as CardInfo;
+                string cardSets = _retrievedCardInfos[cardInfo.CardInfoId].Item1;
+                string cardSpecialProducts = _retrievedCardInfos[cardInfo.CardInfoId].Item2;
+                string cardBanLists = _retrievedCardInfos[cardInfo.CardInfoId].Item3;
+            }
+            <p class="text-wrap"> @cardSets </p>
+            <p class="text-wrap"> @cardSpecialProducts </p>
+            <p class="text-wrap"> @cardBanLists </p>
+        </DetailRowTemplate>
+    </DataGrid>
+}

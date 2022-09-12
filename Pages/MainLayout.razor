@@ -1,0 +1,73 @@
+﻿@inherits LayoutComponentBase
+
+<Blazorise.Bar Breakpoint="Blazorise.Breakpoint.Desktop" Background="Blazorise.Background.Primary" ThemeContrast="Blazorise.ThemeContrast.Dark">
+    @* Theme Selector *@
+    <Blazorise.BarItem>
+        <DropdownList TItem="Theme" TValue="Theme" Data="@(Enum.GetValues<Theme>())"
+                      TextField="@(theme => theme == Theme.Bootstrap ? "Default" : theme.ToString())"
+                      ValueField="@(theme => theme)" SelectedValue="@_theme" SelectedValueChanged="OnSelectedThemeChanged"
+                      Color="Blazorise.Color.Primary">
+            <Blazorise.Icon Name="Blazorise.IconName.Palette" />
+            Theme
+        </DropdownList>
+    </Blazorise.BarItem>
+    <Blazorise.BarLink To="/"> <Blazorise.BarBrand>YgoProgressionDuels</Blazorise.BarBrand> </Blazorise.BarLink>
+    <Blazorise.BarToggler />
+    <Blazorise.BarMenu>
+        <Blazorise.BarStart>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To="/myprogressionseries"> My Progression Series </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To="/openboosterpacks/forfun"> Open Packs For Fun </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To="/viewspecialproducts"> View Special Products </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To="/allbanlists"> View BanLists </Blazorise.BarLink>
+            </Blazorise.BarItem>
+            <Blazorise.BarItem>
+                <Blazorise.BarLink To="/cardsearch"> Card Search </Blazorise.BarLink>
+            </Blazorise.BarItem>
+        </Blazorise.BarStart>
+        <Blazorise.BarEnd>
+            <AuthorizeView>
+                <Authorized>
+                    <Blazorise.BarItem>
+                        <Blazorise.BarLink To="/Identity/Account/Manage">
+                            @if (_currentUser != null)
+                            {
+                                <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48" Style="margin-top:-10px; margin-bottom:-10px;">
+                                    <Blazorise.FigureImage Source="@_currentUser.AvatarUrl" AlternateText="Image Not Found" />
+                                </Blazorise.Figure>
+                            }
+                            @context.User.Identity.Name
+                        </Blazorise.BarLink>
+                    </Blazorise.BarItem>
+                    <Blazorise.BarItem>
+                        <form method="post" action="Identity/Account/LogOut">
+                            <button type="submit" class="nav-link btn btn-link"><span class="oi oi-account-logout" aria-hidden="true" /> Logout </button>
+                        </form>
+                    </Blazorise.BarItem>
+                </Authorized>
+                <NotAuthorized>
+                    <Blazorise.BarItem>
+                        <Blazorise.BarLink To="/Account/Register"><span class="oi oi-person" aria-hidden="true" /> Register </Blazorise.BarLink>
+                    </Blazorise.BarItem>
+                    <Blazorise.BarItem>
+                        <Blazorise.BarLink To="/Account/Login"><span class="oi oi-account-login" aria-hidden="true" /> Login </Blazorise.BarLink>
+                    </Blazorise.BarItem>
+                </NotAuthorized>
+            </AuthorizeView>
+        </Blazorise.BarEnd>
+    </Blazorise.BarMenu>
+</Blazorise.Bar>
+
+<div class="page">
+    <div class="main">
+        <div class="content px-4">
+            @Body
+        </div>
+    </div>
+</div>

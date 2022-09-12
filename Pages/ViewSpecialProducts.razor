@@ -1,0 +1,78 @@
+﻿@page "/viewspecialproducts"
+
+@using System.Web;
+
+@if (_isLoading || _allSpecialProducts?.Any() != true)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    <Blazorise.CardHeader Class="bg-secondary">
+        <h5>Here you can seach for a special product and view the cards it contains.</h5>
+    </Blazorise.CardHeader>
+
+    <DataGrid Data="_allSpecialProducts" TItem="SpecialProduct" Sortable="true" SortMode="DataGridSortMode.Single" Narrow="true"
+          Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+          RowSelectable="@((item) => false)" Striped="true" Bordered="true" Responsive="true"
+          ShowPager="@(_allSpecialProducts.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" PageSize="@Constants.DEFAULT_DATAGRID_PAGESIZE"
+          ShowPageSizes="true" PageSizes="@(Constants.DataGrid_PageSizes)" PagerPosition="DataGridPagerPosition.TopAndBottom"
+          Filterable="@(_allSpecialProducts.Count > Constants.DEFAULT_DATAGRID_PAGESIZE)" FilterMethod="DataGridFilterMethod.Contains"
+          DetailRowTrigger="@((product) => _retrievedSpecialProductIds.Contains(product.SpecialProductId))">
+        <DataGridColumns>
+            <DataGridColumn TItem="SpecialProduct" Field="SpecialProductId" Caption="(Click For Info)" HeaderCellClass="bg-primary" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+                    <div style="background-image:url(@sp.ImageUrl); height:130px; background-position:center; background-size:contain; background-repeat:no-repeat;"
+                     @onclick=@(() => OnOpenUrlInNewTabAsync(sp.SetInfoUrl)) />
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="SpecialProduct" Field="SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="SpecialProduct" Field="SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="SpecialProduct" Field="ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary" Direction="Blazorise.SortDirection.Ascending">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+                    <span>@sp.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridNumericColumn TItem="SpecialProduct" Field="NumCards" Caption="Number of Cards" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="SpecialProduct" Field="SpecialProductId" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{
+                        SpecialProduct sp = context as SpecialProduct;
+                    }
+
+                    <Blazorise.Button Color="Blazorise.Color.Primary" @onclick="@(() => ToggleRowDetails(sp.SpecialProductId))">
+                        Toggle View Cards
+                    </Blazorise.Button>
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+        <DetailRowTemplate>
+            @{
+                SpecialProduct sp = context as SpecialProduct;
+            }
+
+            <div class="row justify-content-start">
+                @foreach (SpecialProductCard spCard in sp.Cards)
+                {
+                    CardInfo cardInfo = new CardInfo()
+                    {
+                        Name = spCard.CardInfoName,
+                        CardInfoUrl = $"{Constants.YGOPRODECK_DBURL}/card/?search={HttpUtility.UrlEncodeUnicode(spCard.CardInfoName)}",
+                        ImageUrl = $"{Constants.CARDIMAGE_URL}{spCard.CardInfoId}.jpg",
+                    };
+                    NewCardModel newCardModel = new NewCardModel(cardInfo, 1, spCard.Rarity);
+
+                    <NewCard CardModel="@newCardModel" />
+                }
+            </div>
+        </DetailRowTemplate>
+    </DataGrid>
+}

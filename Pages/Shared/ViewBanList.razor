@@ -1,0 +1,26 @@
+﻿<h3>BanList: @(_currentBanList?.ReleaseDate.ToShortDateString() ?? "None")</h3>
+
+@if (_currentBanList != null)
+{
+    <DataGrid TItem="BanListEntry"
+              Data="_currentBanListEntries"
+              Filterable="true" FilterMethod="DataGridFilterMethod.Contains"
+              Sortable="true" SortMode="DataGridSortMode.Single"
+              RowSelectable="@((item) => false)"
+              Striped="true" Bordered="true"
+              Resizable="true" Responsive="true"
+              PageSize="@int.MaxValue">
+        <DataGridColumns>
+            <DataGridColumn TItem="BanListEntry" Field="CardInfo.ImageUrl" ShowCaption="false" Sortable="false" Filterable="false">
+                <DisplayTemplate>
+                    @{ BanListEntry entry = context as BanListEntry;}
+                    <BanListCard Entry="entry" />
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="BanListEntry" Field="CardInfo.Name" Caption="Card Name" />
+            <DataGridColumn TItem="BanListEntry" Field="@nameof(BanListEntry.BanListStatus)" Caption="Limit Status" />
+            <DataGridColumn TItem="BanListEntry" Field="CardInfo.Type" Caption="Card Type" />
+            <DataGridColumn TItem="BanListEntry" Field="CardInfo.Description" Caption="Description" />
+        </DataGridColumns>
+    </DataGrid>
+}

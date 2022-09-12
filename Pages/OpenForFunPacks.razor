@@ -1,0 +1,85 @@
+﻿@page "/openboosterpacks/forfun/{boosterpackinfoid}"
+
+@if (_isLoading)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else if (_currentBoosterPackInfo == null)
+{
+    <h3>Booster pack does not exist</h3>
+}
+else
+{
+    <h3>Open Booster Packs For Fun!</h3>
+    <p>
+        Please remember that you are opening packs for fun, these cards will not be saved anywhere.
+        <br />
+        If you want to save the cards you open, please register and create a Progression Series (it's all totally free).
+    </p>
+
+    <DataGrid Data=@(new List<BoosterPackInfo>() {_currentBoosterPackInfo}) TItem="BoosterPackInfo" Sortable="false"
+              Resizable="true" ResizeMode="Blazorise.TableResizeMode.Columns"
+              Narrow="true" RowSelectable="@((item) => false)" Bordered="true" Responsive="true">
+        <DataGridColumns>
+            <DataGridColumn TItem="BoosterPackInfo" Field="BoosterPackInfoId" Caption="(Click For Info)" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = context as BoosterPackInfo; }
+                    <div class="row justify-content-center" @onclick=@(() => OnOpenUrlInNewTabAsync(packInfo.SetInfoUrl))>
+                        <div class="col-auto">
+                            <div style="background-image:url(@packInfo.ImageUrl); height:130px; width:100px; background-position:center; background-size:cover;" />
+                        </div>
+                    </div>
+                </DisplayTemplate>
+            </DataGridColumn>
+            <DataGridColumn TItem="BoosterPackInfo" Field="SetName" Caption="Set Name" HeaderCellClass="bg-primary" />
+            <DataGridColumn TItem="BoosterPackInfo" Field="SetCode" Caption="Set Code" HeaderCellClass="bg-primary" />
+            <DataGridDateColumn TItem="BoosterPackInfo" Field="ReleaseDate" Caption="Release Date" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @{ BoosterPackInfo packInfo = context as BoosterPackInfo; }
+                    <span>@packInfo.ReleaseDate.ToShortDateString()</span>
+                </DisplayTemplate>
+            </DataGridDateColumn>
+            <DataGridColumn TItem="BoosterPackInfo" Field="BoosterPackInfoId" Caption="Open Packs" HeaderCellClass="bg-primary">
+                <DisplayTemplate>
+                    @if (_isWorking)
+                    {
+                        <Blazorise.Button Color="Blazorise.Color.Dark" Loading="true" Disabled="true">Loading...</Blazorise.Button>
+                    }
+                    else
+                    {
+                        @if (_currentBoosterPackInfo.IsStructureDeck)
+                        {
+                            <Blazorise.Button Color="Blazorise.Color.Success" @onclick="() => OnOpenBoosterPacksAsync(1)">Open Box</Blazorise.Button>
+                        }
+                        else
+                        {
+                            <Blazorise.Button Color="Blazorise.Color.Success" @onclick="() => OnOpenBoosterPacksAsync(1)">Open 1 Pack</Blazorise.Button>
+                            <br />
+                            <Blazorise.Button Color="Blazorise.Color.Primary" @onclick="() => OnOpenBoosterPacksAsync(10)">Open 10 Packs</Blazorise.Button>
+                            <br />
+                            <Blazorise.Button Color="Blazorise.Color.Success" @onclick="() => OnOpenBoosterPacksAsync(24)">Open 24 Packs</Blazorise.Button>
+                        }
+                    }
+                </DisplayTemplate>
+            </DataGridColumn>
+        </DataGridColumns>
+    </DataGrid>
+    <p class="text-info">@_openBoosterPackMessage</p>
+    <p class="text-danger">@_openBoosterPackErrorMessage</p>
+    <hr />
+
+    @if (_isWorking)
+    {
+        <div class="spinner-border text-primary" role="status">
+            <span class="sr-only">Loading...</span>
+        </div>
+    }
+    else if (_newlyPulledCards?.Any() == true)
+    {
+        <h4>Number of Unique Cards Pulled: @_newlyPulledCards.Count</h4>
+
+        <NewCardsList NewCards="@_newlyPulledCards" />
+    }
+}

@@ -1,0 +1,30 @@
+﻿
+<span class="w-auto"
+      style="position:relative; top:0; left: 0;">
+    <Blazorise.Image Source="@Entry.CardInfo.ImageUrl"
+                     Style="position:relative; top:0; left:0; height:100px;"
+                     oncontextmenu="return false;" />
+    @{
+        string path = null;
+        @switch (Entry.BanListStatus)
+        {
+            case BanListStatus.Forbidden:
+                path = "/images/assets/limit_forbidden.png";
+                break;
+            case BanListStatus.Limited:
+                path = "/images/assets/limit_limited.png";
+                break;
+            case BanListStatus.SemiLimited:
+                path = "/images/assets/limit_semilimited.png";
+                break;
+        }
+
+        <Blazorise.Image Source="@path" Style="position:absolute; top:-37px; left:0; height:35px;" />
+    }
+</span>
+
+@code
+{
+    [Parameter]
+    public BanListEntry Entry { get; set; }
+}

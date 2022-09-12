@@ -1,0 +1,176 @@
+﻿@inherits AuthorizedComponentBase;
+
+@if (Tournament == null)
+{
+    <div class="spinner-border text-primary" role="status">
+        <span class="sr-only">Loading...</span>
+    </div>
+}
+else
+{
+    <Blazorise.Collapse Visible="@_isVisible">
+        <Blazorise.CollapseHeader Background="Blazorise.Background.Primary" TextColor="Blazorise.TextColor.White" @onclick="@(() => _isVisible = !_isVisible)">
+            <Blazorise.Heading Size="Blazorise.HeadingSize.Is5">
+                <div class="container-fluid">
+                    <div class="row justify-content-between">
+                        <div class="col-auto align-content-center align-self-center">
+                            @if (_isVisible)
+                            {
+                                <i class="fas fa-caret-square-down" />
+                            }
+                            else
+                            {
+                                <i class="fas fa-caret-square-right" />
+                            }
+                            Tournament #@Tournament.Number (@Tournament.Structure.GetDisplayName())
+                        </div>
+                        <div class="col-auto align-content-center align-self-center">
+                            Date Started: @Tournament.DateStarted.ToShortDateString()
+                        </div>
+                        <div class="col-auto align-content-center align-self-center">
+                            BoosterPack: @Tournament.BoosterPackCode
+                        </div>
+                        @if (CurrentUserId.Equals(Tournament.Series?.HostId) || CurrentUserId.ToString().Equals("A8AE0634-7385-43AD-D1EF-08D92FB24385", StringComparison.CurrentCultureIgnoreCase))
+                        {
+                            <div class="col-auto align-content-center align-self-center">
+                                <Blazorise.Button Color="Blazorise.Color.Danger" Clicked="@OnDeleteTournament">
+                                    Delete
+                                </Blazorise.Button>
+                            </div>
+                        }
+                    </div>
+                </div>
+            </Blazorise.Heading>
+        </Blazorise.CollapseHeader>
+        <Blazorise.CollapseBody>
+            <div class="container-fluid">
+                <div class="row">
+                    @* Duelists *@
+                    <div class="col-auto">
+                        @{
+                            var duelistsByScore = Tournament.Duelists
+                                .GroupBy(duelist => new { duelist.Score, duelist.OpponentsDefeated, duelist.OpponentsOpponentsDefeated });
+                        }
+
+                        <Blazorise.Table Borderless="true" FullWidth="true" Striped="true" Narrow="true" Responsive="true">
+                            <Blazorise.TableHeader Background="Blazorise.Background.Info">
+                                <Blazorise.TableHeaderCell> Rank </Blazorise.TableHeaderCell>
+                                <Blazorise.TableHeaderCell />
+                                <Blazorise.TableHeaderCell> Duelist </Blazorise.TableHeaderCell>
+                                <Blazorise.TableHeaderCell> Score </Blazorise.TableHeaderCell>
+                            </Blazorise.TableHeader>
+                            <Blazorise.TableBody>
+                                @for (int i = 0; i < duelistsByScore.Count(); i++)
+                                {
+                                    foreach (TournamentDuelist duelist in duelistsByScore.ElementAt(i))
+                                    {
+                                        int rank = i + 1;
+                                        <Blazorise.TableRow>
+                                            <Blazorise.TableRowHeader TextAlignment="Blazorise.TextAlignment.Center" VerticalAlignment="Blazorise.VerticalAlignment.Middle">
+                                                <strong>@rank</strong>
+                                                @if (rank == 1)
+                                                {<i class="fas fa-crown" /> }
+                                                else if (rank == 2)
+                                                { <i class="fas fa-chess-queen" /> }
+                                                else if (rank == 3)
+                                                { <i class="fas fa-trophy" />}
+                                            </Blazorise.TableRowHeader>
+                                            <Blazorise.TableRowCell VerticalAlignment="Blazorise.VerticalAlignment.Middle">
+                                                <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                                                    <Blazorise.FigureImage Source="@duelist.AvatarUrl" AlternateText="Image Not Found" />
+                                                </Blazorise.Figure>
+                                            </Blazorise.TableRowCell>
+                                            <Blazorise.TableRowCell VerticalAlignment="Blazorise.VerticalAlignment.Middle">
+                                                <strong>@duelist.Username</strong>
+                                            </Blazorise.TableRowCell>
+                                            <Blazorise.TableRowCell TextAlignment="Blazorise.TextAlignment.Center" VerticalAlignment="Blazorise.VerticalAlignment.Middle">
+                                                <label>@duelist.Score</label>
+                                            </Blazorise.TableRowCell>
+                                        </Blazorise.TableRow>
+                                    }
+                                }
+                            </Blazorise.TableBody>
+                        </Blazorise.Table>
+                    </div>
+                    @* Rounds and Pairings *@
+                    <div class="col">
+                        @{ var pairingsByRound = Tournament.Pairings.GroupBy(pairing => pairing.RoundNumber); }
+                        @for (int i = 0; i < pairingsByRound.Count(); i++)
+                        {
+                            bool currentRound = IsCurrentTournament && i == 0;
+                            bool showControls = currentRound && (CurrentUserId.Equals(Tournament.Series.HostId) || CurrentUserId.ToString().Equals("A8AE0634-7385-43AD-D1EF-08D92FB24385", StringComparison.CurrentCultureIgnoreCase));
+                            var grouping = pairingsByRound.ElementAt(i);
+
+                            <Blazorise.Card>
+                                <Blazorise.CardHeader Background="@(currentRound ? Blazorise.Background.Primary : Blazorise.Background.Light)"
+                                                      TextColor="@(currentRound ? Blazorise.TextColor.White : Blazorise.TextColor.Dark)">
+                                    <strong>Round #@grouping.Key / @Tournament.GetExpectedNumRounds()</strong>
+                                </Blazorise.CardHeader>
+                                <Blazorise.CardBody>
+                                    <div class="container-fluid">
+                                        <div class="row justify-content-start">
+                                            @foreach (TournamentPairing pairing in grouping)
+                                            {
+                                                <div class="col-auto align-self-center">
+                                                    <Blazorise.Card Background="Blazorise.Background.Dark" TextColor="Blazorise.TextColor.White">
+                                                        <Blazorise.CardBody Style="margin:-13px;" TextAlignment="Blazorise.TextAlignment.Center">
+                                                            @if (pairing.Duelists.Count < 2 || pairing.Duelists.First().Score > pairing.Duelists.Last().Score)
+                                                            {
+                                                                <Blazorise.Badge Background="Blazorise.Background.Success">
+                                                                    <i class="fas fa-crown" />
+                                                                </Blazorise.Badge>
+                                                            }
+                                                            <strong>@pairing.Duelists.First().Username</strong>
+                                                            <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                                                                <Blazorise.FigureImage Source="@pairing.Duelists.First().AvatarUrl" AlternateText="Image Not Found" />
+                                                            </Blazorise.Figure>
+                                                            <strong> VS </strong>
+                                                            @if (pairing.Duelists.Count > 1)
+                                                            {
+                                                                <Blazorise.Figure Size="Blazorise.FigureSize.Is48x48">
+                                                                    <Blazorise.FigureImage Source="@pairing.Duelists.Last().AvatarUrl" AlternateText="Image Not Found" />
+                                                                </Blazorise.Figure>
+                                                                <strong>@pairing.Duelists.Last().Username</strong>
+                                                                @if (pairing.Duelists.First().Score < pairing.Duelists.Last().Score)
+                                                                {
+                                                                    <Blazorise.Badge Background="Blazorise.Background.Success">
+                                                                        <i class="fas fa-crown" />
+                                                                    </Blazorise.Badge>
+                                                                }
+                                                            }
+                                                            else
+                                                            {
+                                                                <strong>(BYE)</strong>
+                                                            }
+                                                        </Blazorise.CardBody>
+                                                        @if (showControls && pairing.Duelists.Count > 1)
+                                                        {
+                                                            <Blazorise.CardFooter TextAlignment="Blazorise.TextAlignment.Center">
+                                                                <Blazorise.Button Color="Blazorise.Color.Success" Clicked="@(() => OnCalculateAndSaveScoresAsync(pairing, true))"
+                                                                                  Disabled="@(pairing.Duelists.First().Score > pairing.Duelists.Last().Score)">
+                                                                    Win
+                                                                </Blazorise.Button>
+                                                                <Blazorise.Button Color="Blazorise.Color.Warning" Clicked="@(() => OnCalculateAndSaveScoresAsync(pairing, null))"
+                                                                                  Disabled="@(pairing.Duelists.First().Score == 0 && pairing.Duelists.Last().Score == 0)">
+                                                                    Reset
+                                                                </Blazorise.Button>
+                                                                <Blazorise.Button Color="Blazorise.Color.Success" Clicked="@(() => OnCalculateAndSaveScoresAsync(pairing, false))"
+                                                                                  Disabled="@(pairing.Duelists.First().Score < pairing.Duelists.Last().Score)">
+                                                                    Win
+                                                                </Blazorise.Button>
+                                                            </Blazorise.CardFooter>
+                                                        }
+                                                    </Blazorise.Card>
+                                                </div>
+                                            }
+                                        </div>
+                                    </div>
+                                </Blazorise.CardBody>
+                            </Blazorise.Card>
+                        }
+                    </div>
+                </div>
+            </div>
+        </Blazorise.CollapseBody>
+    </Blazorise.Collapse>
+}
